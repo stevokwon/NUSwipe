@@ -1,0 +1,129 @@
+// ============================================================
+// Database types (mirrors the Supabase schema)
+// ============================================================
+
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: {
+        Row: Profile;
+        Insert: Partial<Omit<Profile, "id">> & { id: string };
+        Update: Partial<Omit<Profile, "id">>;
+        Relationships: [];
+      };
+      jobs: {
+        Row: Job;
+        Insert: Omit<Job, "id" | "created_at"> & { id?: string };
+        Update: Partial<Omit<Job, "id" | "created_at">>;
+        Relationships: [];
+      };
+      applications: {
+        Row: Application;
+        Insert: Omit<Application, "id" | "applied_at" | "updated_at"> & { id?: string };
+        Update: Partial<Pick<Application, "status" | "notes" | "ats_submission_id">> & { updated_at?: string };
+        Relationships: [];
+      };
+      skipped_jobs: {
+        Row: { user_id: string; job_id: string; skipped_at: string };
+        Insert: { user_id: string; job_id: string; skipped_at?: string };
+        Update: { user_id?: string; job_id?: string; skipped_at?: string };
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+}
+
+// ============================================================
+// Application-layer types
+// ============================================================
+
+export interface Profile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  preferred_name: string | null;
+  email: string | null;
+  phone_country_code: string | null;
+  phone_number: string | null;
+  // Singapore
+  sg_residency: string | null;
+  ns_status: string | null;
+  sg_university: string | null;
+  // Hong Kong
+  hk_residency: string | null;
+  hk_university: string | null;
+  // Academic
+  major: string | null;
+  minor: string | null;
+  gpa: string | null;
+  grad_month_year: string | null;
+  // Documents
+  resume_url: string | null;
+  linkedin_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AtsType = "greenhouse" | "lever" | "url";
+
+export interface Job {
+  id: string;
+  company: string;
+  role: string;
+  location: string;
+  division: string | null;
+  description: string | null;
+  visa_sponsorship: boolean;
+  salary_range: string | null;
+  ats_type: AtsType;
+  ats_board_token: string | null;
+  ats_job_id: string | null;
+  ats_fallback_url: string | null;
+  logo_url: string | null;
+  tags: string[];
+  active: boolean;
+  created_at: string;
+}
+
+export type ApplicationStatus = "applied" | "interviewing" | "offer" | "rejected";
+
+export interface Application {
+  id: string;
+  user_id: string;
+  job_id: string;
+  status: ApplicationStatus;
+  ats_submission_id: string | null;
+  notes: string | null;
+  applied_at: string;
+  updated_at: string;
+}
+
+// Application joined with job details (used in tracker)
+export interface ApplicationWithJob extends Application {
+  jobs: Job;
+}
+
+// Profile completeness check (used to gate the swipe page)
+export function isProfileComplete(profile: Profile): boolean {
+  // resume_url is strongly encouraged but not required to access swipe —
+  // the apply API will reject Greenhouse/Lever submissions without it.
+  return !!(
+    profile.first_name &&
+    profile.last_name &&
+    profile.email &&
+    profile.major &&
+    profile.grad_month_year
+  );
+}
