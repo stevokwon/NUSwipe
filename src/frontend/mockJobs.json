@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "company": "Grab",
+    "logo": "🟢",
+    "role": "Software Engineering Intern",
+    "type": "Internship · 6 months",
+    "location": "Singapore, SG",
+    "salary": "S$1,800 – S$2,200 / mo",
+    "tags": ["React", "Go", "Kubernetes", "gRPC"],
+    "match": 94,
+    "description": "Join Grab's Marketplace team to build the systems that power millions of daily rides, deliveries, and financial transactions across Southeast Asia. You'll ship production code from day one.",
+    "qualifications": [
+      "Pursuing CS, CE, or related degree",
+      "Strong fundamentals in data structures & algorithms",
+      "Experience with at least one backend language (Go, Java, Python)",
+      "Familiar with REST APIs and basic system design"
+    ],
+    "deadline": "15 Jul 2025",
+    "headcount": 12
+  },
+  {
+    "id": 2,
+    "company": "Sea Limited (Shopee)",
+    "logo": "🛍️",
+    "role": "Backend Engineer – New Grad",
+    "type": "Full-time",
+    "location": "Singapore, SG",
+    "salary": "S$5,500 – S$7,000 / mo",
+    "tags": ["Java", "Spring Boot", "MySQL", "Kafka"],
+    "match": 88,
+    "description": "Shopee's Checkout & Payments squad is hiring fresh grads to scale the transaction infrastructure serving 800M+ users. Work on distributed systems that handle peak-season flash sales.",
+    "qualifications": [
+      "Bachelor's in Computer Science or equivalent",
+      "Solid understanding of distributed systems",
+      "Proficiency in Java or C++",
+      "Knowledge of SQL databases"
+    ],
+    "deadline": "30 Jun 2025",
+    "headcount": 6
+  },
+  {
+    "id": 3,
+    "company": "DBS Bank",
+    "logo": "🏦",
+    "role": "AI/ML Engineering Intern",
+    "type": "Internship · 5 months",
+    "location": "Singapore, SG",
+    "salary": "S$1,600 – S$2,000 / mo",
+    "tags": ["Python", "PyTorch", "LLM", "FastAPI"],
+    "match": 91,
+    "description": "DBS's AI Centre of Excellence is building generative AI solutions for banking. Help prototype LLM-powered advisory tools, document processing pipelines, and fraud detection models.",
+    "qualifications": [
+      "Pursuing CS, Data Science, or AI-related degree",
+      "Experience with Python and ML frameworks (PyTorch / TensorFlow)",
+      "Exposure to NLP or LLMs is a strong plus",
+      "Comfortable working with financial data"
+    ],
+    "deadline": "20 Jul 2025",
+    "headcount": 8
+  },
+  {
+    "id": 4,
+    "company": "TikTok (ByteDance)",
+    "logo": "🎵",
+    "role": "Frontend Engineer Intern",
+    "type": "Internship · 6 months",
+    "location": "Singapore, SG",
+    "salary": "S$2,000 – S$2,500 / mo",
+    "tags": ["React", "TypeScript", "WebGL", "Node.js"],
+    "match": 85,
+    "description": "Build the creator-facing tools that empower 5M+ TikTok content creators in SEA. You'll work on the video editor, effects library, and live-streaming studio — high-impact, high-visibility work.",
+    "qualifications": [
+      "Strong proficiency in React and TypeScript",
+      "Understanding of browser rendering and performance optimization",
+      "Eye for design and UX",
+      "Portfolio of personal or open-source projects"
+    ],
+    "deadline": "10 Jul 2025",
+    "headcount": 4
+  },
+  {
+    "id": 5,
+    "company": "Stripe",
+    "logo": "💳",
+    "role": "Software Engineer – New Grad",
+    "type": "Full-time",
+    "location": "Singapore, SG",
+    "salary": "S$7,000 – S$9,000 / mo",
+    "tags": ["Ruby", "Java", "AWS", "Distributed Systems"],
+    "match": 82,
+    "description": "Stripe's APAC engineering hub is growing. As a new grad, you'll rotate across product areas — payments, fraud, billing, or infrastructure — before joining a permanent team. World-class eng culture.",
+    "qualifications": [
+      "Bachelor's or Master's in CS or related field",
+      "Top academic standing or strong project portfolio",
+      "Deep CS fundamentals required",
+      "No specific language required — willingness to learn"
+    ],
+    "deadline": "25 Jun 2025",
+    "headcount": 3
+  },
+  {
+    "id": 6,
+    "company": "Visa",
+    "logo": "💙",
+    "role": "Data Science Intern",
+    "type": "Internship · 4 months",
+    "location": "Singapore, SG",
+    "salary": "S$1,500 – S$1,800 / mo",
+    "tags": ["Python", "SQL", "Spark", "Tableau"],
+    "match": 79,
+    "description": "Visa's Asia Pacific data science team analyses transaction patterns across billions of payments to detect fraud, improve authorization rates, and deliver merchant insights.",
+    "qualifications": [
+      "Pursuing Statistics, Data Science, or CS degree",
+      "Strong SQL and Python skills",
+      "Experience with data visualisation tools",
+      "Exposure to big data (Spark, Hive) is a plus"
+    ],
+    "deadline": "5 Jul 2025",
+    "headcount": 5
+  }
+]
