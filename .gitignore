@@ -33,6 +33,11 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Internal project docs — local reference only, not for public repo
+CLAUDE.md
+AGENTS.md
+MVP.md
+
 # vercel
 .vercel
 
