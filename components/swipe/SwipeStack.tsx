@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import type { Job } from "@/lib/types";
+import { resolveApplyToast } from "@/lib/swipe/apply-toast";
 import { JobCard } from "./JobCard";
 
 const SWIPE_THRESHOLD = 100;
@@ -71,9 +72,11 @@ export function SwipeStack({ initialJobs }: Props) {
 
     if (dir === "right") {
       setAppliedCount((c) => c + 1);
-      setShowMatch(true);
-      setTimeout(() => setShowMatch(false), 1800);
-      await submitApplication(job);
+      const outcome = await submitApplication(job);
+      if (outcome === "direct") {
+        setShowMatch(true);
+        setTimeout(() => setShowMatch(false), 1800);
+      }
     } else {
       await recordSkip(job);
     }
@@ -82,7 +85,7 @@ export function SwipeStack({ initialJobs }: Props) {
   // Keep triggerRef current every render
   triggerRef.current = triggerSwipe;
 
-  async function submitApplication(job: Job) {
+  async function submitApplication(job: Job): Promise<"direct" | "redirect" | "error"> {
     setSubmitting(true);
     try {
       const res  = await fetch("/api/apply", {
@@ -94,12 +97,19 @@ export function SwipeStack({ initialJobs }: Props) {
 
       if (!res.ok) {
         toast.error(data.error ?? "Application failed");
-        return;
+        return "error";
       }
-      if (data.redirect) {
+
+      const spec = resolveApplyToast(data, job.company);
+      if (spec.outcome === "redirect") {
         window.open(data.redirect, "_blank", "noopener");
-        toast.success(`Opening ${job.company} in a new tab — saved to tracker!`);
       }
+      if (spec.variant === "success") {
+        toast.success(spec.message);
+      } else {
+        toast.info(spec.message);
+      }
+      return spec.outcome;
     } finally {
       setSubmitting(false);
     }
