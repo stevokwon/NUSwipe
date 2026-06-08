@@ -97,7 +97,19 @@ export interface Job {
   created_at: string;
 }
 
-export type ApplicationStatus = "applied" | "interviewing" | "offer" | "rejected";
+// APPLICATION_STATUS_VALUES is the runtime source of truth — the type is
+// derived from it so the two can never diverge.
+export const APPLICATION_STATUS_VALUES = [
+  "applied",
+  "interviewing",
+  "offer",
+  "rejected",
+  // 'pending' = URL-fallback job opened in new tab; user has not yet confirmed
+  // submission.  Stays 'pending' until the user manually moves it to 'applied'.
+  "pending",
+] as const;
+
+export type ApplicationStatus = (typeof APPLICATION_STATUS_VALUES)[number];
 
 export interface Application {
   id: string;
