@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Profile, Job } from "@/lib/types";
+import { applyToJob } from "@/lib/ats";
 
 // ── Mock Supabase ─────────────────────────────────────────────────────────────
 const mockGetUser = vi.fn();
@@ -28,6 +29,9 @@ vi.mock("@/lib/profile", () => ({
 // ── Lazy import (after mocks) ─────────────────────────────────────────────────
 const { POST } = await import("@/app/api/apply/route");
 import { checkVisaCompatibility } from "@/lib/profile";
+
+// ── Shared insert spy — captured across all from("applications") calls ────────
+const mockInsert = vi.fn().mockResolvedValue({ error: null });
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 const completeProfile: Profile = {
@@ -96,7 +100,7 @@ function setupSuccessPath(
       eq: vi.fn().mockReturnThis(),
       single: vi.fn(),
       maybeSingle: vi.fn(),
-      insert: vi.fn().mockResolvedValue({ error: null }),
+      insert: mockInsert,
     };
 
     if (table === "profiles") {
@@ -114,8 +118,11 @@ function setupSuccessPath(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockInsert.mockResolvedValue({ error: null });
   // Reset legal checker to compatible by default
   vi.mocked(checkVisaCompatibility).mockReturnValue({ compatible: true });
+  // Reset ATS router to direct-submit default
+  vi.mocked(applyToJob).mockResolvedValue({ kind: "submitted", submissionId: "gh-001" });
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -177,6 +184,26 @@ describe("POST /api/apply — legal gate (A4)", () => {
     // ATS was called — response has submissionId
     const body = await res.json();
     expect(body.success).toBe(true);
+    // Direct ATS submission must record status "applied" — not "pending"
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "applied" })
+    );
+  });
+
+  it("redirect result → insert records status 'pending' (unconfirmed submission)", async () => {
+    setupSuccessPath({}, { visa_sponsorship: true, ats_type: "url", ats_fallback_url: "https://careers.acme.com" });
+
+    vi.mocked(applyToJob).mockResolvedValue({ kind: "redirect", url: "https://careers.acme.com" });
+
+    const res = await POST(makeRequest());
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.redirect).toBe("https://careers.acme.com");
+    // URL-fallback must record status "pending" — submission unconfirmed
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "pending" })
+    );
   });
 
   it("treats null residency as compatible and continues to ATS", async () => {
