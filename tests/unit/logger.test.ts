@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from "vitest";
 import { logger } from "@/lib/logger";
 
 // ── Spies ─────────────────────────────────────────────────────────────────────
@@ -15,6 +15,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs(); // restore NODE_ENV to "test" between cases
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -23,28 +24,22 @@ describe("logger", () => {
   // ── Format output shape ─────────────────────────────────────────────────
 
   it("formats output as [LEVEL]{meta} message when NODE_ENV is not test", () => {
-    const original = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
 
     logger.warn({ field: "sg_residency" }, "test warning");
 
     expect(spyWarn).toHaveBeenCalledOnce();
     const [formatted] = spyWarn.mock.calls[0] as [string];
     expect(formatted).toBe('[WARN] {"field":"sg_residency"} test warning');
-
-    process.env.NODE_ENV = original;
   });
 
   it("omits meta braces when meta object is empty", () => {
-    const original = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
 
     logger.warn({}, "bare message");
 
     const [formatted] = spyWarn.mock.calls[0] as [string];
     expect(formatted).toBe("[WARN] bare message");
-
-    process.env.NODE_ENV = original;
   });
 
   // ── NODE_ENV suppression ────────────────────────────────────────────────
