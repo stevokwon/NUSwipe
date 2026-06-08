@@ -42,3 +42,9 @@ guideline
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Graphify knowledge graph output
+graphify-out/
+
+# Agent context for parallel execution
+agent-context/
