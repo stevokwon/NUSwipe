@@ -256,9 +256,7 @@ yarn-error.log*
 .env*
 
 # Internal project docs — local reference only, not for public repo
-CLAUDE.md
-AGENTS.md
-MVP.md
+guideline
 
 # vercel
 .vercel
