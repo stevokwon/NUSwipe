@@ -39,10 +39,12 @@ export async function submitToLever(
   // APAC fields — built by lib/profile/apac-mapper (B2)
   const { questionAnswers, educationAnswers } = buildApacPayload(profile);
 
-  form.append("cards[education][field_of_study]", educationAnswers.major);
-  form.append("cards[education][end_date]", educationAnswers.gradDate);
-  if (educationAnswers.gpa !== null) {
-    form.append("cards[education][gpa]", educationAnswers.gpa);
+  if (educationAnswers.major) {
+    form.append("cards[education][field_of_study]", educationAnswers.major);
+    form.append("cards[education][end_date]", educationAnswers.gradDate);
+    if (educationAnswers.gpa !== null) {
+      form.append("cards[education][gpa]", educationAnswers.gpa);
+    }
   }
 
   questionAnswers.forEach((qa, i) => {
