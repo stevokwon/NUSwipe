@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { applyToJob } from "@/lib/ats";
 import type { Profile, Job } from "@/lib/types";
 import { isProfileComplete } from "@/lib/types";
+import { checkVisaCompatibility } from "@/lib/profile";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -64,6 +65,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: "You have already applied to this job." },
       { status: 409 }
+    );
+  }
+
+  // Legal gate — block incompatible visa/residency before any ATS call
+  const compatibility = checkVisaCompatibility(profile as Profile, job as Job);
+  if (!compatibility.compatible) {
+    return NextResponse.json(
+      { error: compatibility.reason, field: compatibility.field },
+      { status: 422 }
     );
   }
 
