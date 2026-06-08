@@ -6,11 +6,23 @@ import type { ApplicationWithJob, ApplicationStatus } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 
 const COLUMNS: { status: ApplicationStatus; label: string; icon: string; color: string }[] = [
+  { status: "pending", label: "Pending", icon: "⏳", color: "border-orange-500/40 bg-orange-950/20" },
   { status: "applied", label: "Applied", icon: "📤", color: "border-blue-500/40 bg-blue-950/20" },
   { status: "interviewing", label: "Interviewing", icon: "🎤", color: "border-yellow-500/40 bg-yellow-950/20" },
   { status: "offer", label: "Offer", icon: "🎉", color: "border-green-500/40 bg-green-950/20" },
   { status: "rejected", label: "Rejected", icon: "❌", color: "border-red-500/40 bg-red-950/20" },
 ];
+
+// Exported for unit testing. Pending apps are excluded from both numerator and
+// denominator — they are unconfirmed submissions (URL-fallback tab opens) and
+// should not inflate the total or depress the response rate.
+export function computeResponseRate(applications: ApplicationWithJob[]): number {
+  const confirmed = applications.filter((a) => a.status !== "pending");
+  if (confirmed.length === 0) return 0;
+  return Math.round(
+    (confirmed.filter((a) => a.status !== "applied").length / confirmed.length) * 100
+  );
+}
 
 interface Props {
   initialApplications: ApplicationWithJob[];
@@ -19,7 +31,7 @@ interface Props {
 export function ApplicationBoard({ initialApplications }: Props) {
   const [applications, setApplications] = useState(initialApplications);
 
-  async function updateStatus(id: string, status: ApplicationStatus) {
+  async function updateStatus(id: string, status: ApplicationStatus): Promise<void> {
     // Optimistic update
     setApplications((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status } : a))
@@ -38,18 +50,15 @@ export function ApplicationBoard({ initialApplications }: Props) {
     }
   }
 
+  const pendingApps = applications.filter((a) => a.status === "pending");
+  const confirmedApps = applications.filter((a) => a.status !== "pending");
   const total = applications.length;
-  const responseRate =
-    total > 0
-      ? Math.round(
-          (applications.filter((a) => a.status !== "applied").length / total) * 100
-        )
-      : 0;
+  const responseRate = computeResponseRate(applications);
 
   return (
     <div className="space-y-6">
       {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {COLUMNS.map((col) => {
           const count = applications.filter((a) => a.status === col.status).length;
           return (
@@ -80,16 +89,35 @@ export function ApplicationBoard({ initialApplications }: Props) {
         </div>
       )}
 
-      {/* Application cards — sorted by date descending */}
-      <div className="space-y-3">
-        {applications.map((app) => (
-          <ApplicationCard
-            key={app.id}
-            application={app}
-            onStatusChange={(status) => updateStatus(app.id, status)}
-          />
-        ))}
-      </div>
+      {/* Pending section — leftmost, shown only when unconfirmed submissions exist */}
+      {pendingApps.length > 0 && (
+        <section aria-label="pending applications" className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-orange-400">
+            Awaiting your confirmation
+          </p>
+          {pendingApps.map((app) => (
+            <ApplicationCard
+              key={app.id}
+              application={app}
+              onStatusChange={(status) => updateStatus(app.id, status)}
+              onConfirmApplied={() => updateStatus(app.id, "applied")}
+            />
+          ))}
+        </section>
+      )}
+
+      {/* Confirmed application cards — sorted by date descending */}
+      {confirmedApps.length > 0 && (
+        <div className="space-y-3">
+          {confirmedApps.map((app) => (
+            <ApplicationCard
+              key={app.id}
+              application={app}
+              onStatusChange={(status) => updateStatus(app.id, status)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -97,12 +125,15 @@ export function ApplicationBoard({ initialApplications }: Props) {
 function ApplicationCard({
   application: app,
   onStatusChange,
+  onConfirmApplied,
 }: {
   application: ApplicationWithJob;
   onStatusChange: (status: ApplicationStatus) => void;
+  onConfirmApplied?: () => void;
 }) {
   const job = app.jobs;
   const col = COLUMNS.find((c) => c.status === app.status) ?? COLUMNS[0];
+  const isPending = app.status === "pending";
 
   return (
     <div className="flex items-start gap-4 rounded-xl border border-white/10 bg-white/5 p-4 hover:bg-white/8 transition-colors">
@@ -133,21 +164,47 @@ function ApplicationCard({
 
         <div className="flex items-center justify-between mt-2 gap-2 flex-wrap">
           <p className="text-xs text-slate-500">
-            Applied {new Date(app.applied_at).toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" })}
+            {isPending ? "Opened" : "Applied"}{" "}
+            {new Date(app.applied_at).toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" })}
           </p>
 
-          {/* Status selector */}
-          <select
-            value={app.status}
-            onChange={(e) => onStatusChange(e.target.value as ApplicationStatus)}
-            className="text-xs bg-transparent border border-white/20 text-slate-300 rounded-lg px-2 py-1 cursor-pointer hover:border-purple-500 transition-colors"
-          >
-            {COLUMNS.map((c) => (
-              <option key={c.status} value={c.status} className="bg-slate-900">
-                {c.icon} {c.label}
-              </option>
-            ))}
-          </select>
+          {isPending ? (
+            /* Pending actions: re-open the career page + confirm submission */
+            <div className="flex items-center gap-2">
+              {job?.ats_fallback_url && (
+                <a
+                  href={job.ats_fallback_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-orange-400 hover:text-orange-300 underline underline-offset-2 transition-colors"
+                >
+                  Finish applying
+                </a>
+              )}
+              {onConfirmApplied && (
+                <button
+                  type="button"
+                  onClick={onConfirmApplied}
+                  className="text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-lg px-3 py-1 transition-colors"
+                >
+                  Mark as Applied
+                </button>
+              )}
+            </div>
+          ) : (
+            /* Status selector for confirmed applications */
+            <select
+              value={app.status}
+              onChange={(e) => onStatusChange(e.target.value as ApplicationStatus)}
+              className="text-xs bg-transparent border border-white/20 text-slate-300 rounded-lg px-2 py-1 cursor-pointer hover:border-purple-500 transition-colors"
+            >
+              {COLUMNS.filter((c) => c.status !== "pending").map((c) => (
+                <option key={c.status} value={c.status} className="bg-slate-900">
+                  {c.icon} {c.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
     </div>

@@ -14,7 +14,9 @@ export default async function TrackerPage() {
 
   const { data: applications } = await supabase
     .from("applications")
-    .select("*, jobs(*)")
+    .select(
+      "id, user_id, job_id, status, ats_submission_id, notes, applied_at, updated_at, jobs(id, company, role, location, division, description, visa_sponsorship, salary_range, ats_type, ats_board_token, ats_job_id, ats_fallback_url, logo_url, tags, active, created_at)"
+    )
     .eq("user_id", user.id)
     .order("applied_at", { ascending: false });
 
