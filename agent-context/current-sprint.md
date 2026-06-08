@@ -32,7 +32,25 @@ relevance score → personalised swipe feed order
 - Community 0 cohesion 0.08 — grew by accretion, needs splitting
 
 ## Merge state
-<!-- To be filled after /writing-plans -->
+
+### Lane B — Data & Schema
+| Task | Branch | Status | Merged into |
+|------|--------|--------|-------------|
+| B1 — JobSeedRowSchema (Zod) | feat/b/B1-seed-schema | merged | sprint-2/real-job-feed |
+| B2 — Seed validation + upsert script | feat/b/B2-seed-script | open PR | sprint-2/real-job-feed |
+| B3 — Curated jobs CSV | feat/b/B3-jobs-csv | not started | sprint-2/real-job-feed |
+
+### Lane A — Feed Query
+| Task | Branch | Status |
+|------|--------|--------|
+| A1 — GET /api/jobs: explicit columns + DB-level exclusion | — | not started |
+| A2 — Jobs feed integration test | — | not started |
+
+### Lane C — Job Card UI
+| Task | Branch | Status |
+|------|--------|--------|
+| C1 — JobCard real fields | — | not started |
+| C2 — SwipeStack empty + loading states | — | not started |
 
 ## Active task for this session
 <!-- FILL THIS IN before starting each session -->
