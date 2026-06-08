@@ -1,5 +1,6 @@
 import type { Profile, Job } from "@/lib/types";
 import { buildApacPayload } from "@/lib/profile";
+import { formatPhone } from "./format-phone";
 
 // Submits an application to a Greenhouse-hosted job board via their public Job Board API.
 // Docs: https://developers.greenhouse.io/job-board.html#apply-for-a-job
@@ -68,9 +69,3 @@ export async function submitToGreenhouse(
   return String(data.id ?? "submitted");
 }
 
-function formatPhone(
-  countryCode: string | null,
-  number: string | null
-): string {
-  return `${countryCode ?? "+65"}${(number ?? "").replace(/\s/g, "")}`;
-}

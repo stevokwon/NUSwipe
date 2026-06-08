@@ -1,5 +1,6 @@
 import type { Profile, Job } from "@/lib/types";
 import { buildApacPayload } from "@/lib/profile/apac-mapper";
+import { formatPhone } from "./format-phone";
 
 // Submits an application to a Lever job posting via their public apply endpoint.
 // Lever's apply endpoint: POST https://jobs.lever.co/{company}/apply/{postingId}
@@ -68,9 +69,3 @@ export async function submitToLever(
   return "lever-submitted";
 }
 
-function formatPhone(
-  countryCode: string | null,
-  number: string | null
-): string {
-  return `${countryCode ?? "+65"}${(number ?? "").replace(/\s/g, "")}`;
-}
