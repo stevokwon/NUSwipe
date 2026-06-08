@@ -46,6 +46,15 @@ export default function LandingPage() {
           </Link>
         </div>
 
+        <div className="pt-2">
+          <Link
+            href="/employer/login"
+            className="text-xs text-purple-400 hover:text-purple-300 hover:underline transition-all"
+          >
+            Are you a Recruiter? Hire on NUSwipe →
+          </Link>
+        </div>
+
         <p className="text-xs text-slate-600 pt-2">
           Built for NUS · NTU · HKU · HKUST · CUHK
         </p>

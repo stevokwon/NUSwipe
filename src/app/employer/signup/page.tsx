@@ -1,0 +1,150 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+
+export default function EmployerSignupPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+
+    const supabase = createClient();
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          role: "employer",
+          company_name: companyName,
+          contact_name: contactName,
+        },
+      },
+    });
+
+    if (error) {
+      toast.error(error.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data.user) {
+      // Create the profile row with the 'employer' role
+      const nameParts = contactName.split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from("profiles").upsert({
+        id: data.user.id,
+        email,
+        role: "employer",
+        first_name: firstName,
+        last_name: lastName,
+        preferred_name: companyName, // Store company name in preferred_name
+      });
+    }
+
+    toast.success("Employer account created! Welcome to NUSwipe.");
+    router.push("/employer/dashboard");
+    router.refresh();
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
+      <Card className="w-full max-w-md border-white/10 bg-white/5 backdrop-blur-sm text-white">
+        <CardHeader className="text-center pb-2">
+          <div className="text-4xl mb-2">🏢</div>
+          <CardTitle className="text-2xl font-bold">NUSwipe for Employers</CardTitle>
+          <CardDescription className="text-slate-300">
+            Post job openings and swipe right on elite candidate profiles.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSignup} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="companyName" className="text-slate-200">Company Name</Label>
+              <Input
+                id="companyName"
+                type="text"
+                placeholder="e.g. Grab, Shopee, Stripe"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                required
+                className="bg-white/10 border-white/20 text-white placeholder:text-slate-400"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contactName" className="text-slate-200">Contact Person Name</Label>
+              <Input
+                id="contactName"
+                type="text"
+                placeholder="e.g. Sarah Tan"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                required
+                className="bg-white/10 border-white/20 text-white placeholder:text-slate-400"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-slate-200">Corporate Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="recruiting@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="bg-white/10 border-white/20 text-white placeholder:text-slate-400"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-slate-200">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="min. 8 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+                className="bg-white/10 border-white/20 text-white placeholder:text-slate-400"
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-2"
+              disabled={loading}
+            >
+              {loading ? "Creating account…" : "Create Employer Account"}
+            </Button>
+          </form>
+          <p className="text-center text-sm text-slate-400 mt-4">
+            Already registered?{" "}
+            <Link href="/employer/login" className="text-indigo-400 hover:underline">
+              Employer Login
+            </Link>
+          </p>
+          <div className="border-t border-white/10 mt-6 pt-4 text-center">
+            <Link href="/login" className="text-xs text-slate-400 hover:text-white">
+              Are you a Candidate? Go to Candidate Portal →
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

@@ -57,6 +57,7 @@ export interface Profile {
   email: string | null;
   phone_country_code: string | null;
   phone_number: string | null;
+  role: "candidate" | "employer";
   // Singapore
   sg_residency: string | null;
   ns_status: string | null;
@@ -94,6 +95,7 @@ export interface Job {
   logo_url: string | null;
   tags: string[];
   active: boolean;
+  posted_by: string | null;
   created_at: string;
 }
 
