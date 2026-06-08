@@ -71,21 +71,22 @@ export async function POST(req: NextRequest) {
   try {
     const result = await applyToJob(profile as Profile, job as Job);
 
+    const status = result.kind === "redirect" ? "pending" as const : "applied" as const;
     const insertPayload = {
       user_id: user.id,
       job_id: jobId,
-      status: "applied" as const,
+      status,
       ats_submission_id: result.kind === "redirect" ? null : result.submissionId,
     };
 
     if (result.kind === "redirect") {
-      // Record in tracker as 'applied' (user opens job in new tab)
+      // Record as 'pending' — submission unconfirmed until user completes external form
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await supabase.from("applications").insert(insertPayload as any);
       return NextResponse.json({ redirect: result.url }, { status: 200 });
     }
 
-    // Direct ATS submission succeeded — record it
+    // Direct ATS submission succeeded — record as 'applied'
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await supabase.from("applications").insert(insertPayload as any);
 

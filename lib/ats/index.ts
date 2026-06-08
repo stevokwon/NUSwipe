@@ -1,6 +1,7 @@
 import type { Profile, Job } from "@/lib/types";
 import { submitToGreenhouse } from "./greenhouse";
 import { submitToLever } from "./lever";
+import { submitToFallback } from "./fallback";
 
 export type ApplyResult =
   | { kind: "submitted"; submissionId: string }
@@ -21,12 +22,8 @@ export async function applyToJob(
       const submissionId = await submitToLever(profile, job);
       return { kind: "submitted", submissionId };
     }
-    case "url": {
-      if (!job.ats_fallback_url) {
-        throw new Error("No fallback URL configured for this job");
-      }
-      return { kind: "redirect", url: job.ats_fallback_url };
-    }
+    case "url":
+      return submitToFallback(job);
     default:
       throw new Error(`Unknown ATS type: ${(job as Job).ats_type}`);
   }
