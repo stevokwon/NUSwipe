@@ -1,4 +1,5 @@
 import type { Profile, Job } from "@/lib/types";
+import { buildApacPayload } from "@/lib/profile/apac-mapper";
 
 // Submits an application to a Lever job posting via their public apply endpoint.
 // Lever's apply endpoint: POST https://jobs.lever.co/{company}/apply/{postingId}
@@ -34,6 +35,20 @@ export async function submitToLever(
   }
 
   form.append("resume", resumeBlob, "resume.pdf");
+
+  // APAC fields — built by lib/profile/apac-mapper (B2)
+  const { questionAnswers, educationAnswers } = buildApacPayload(profile);
+
+  form.append("cards[education][field_of_study]", educationAnswers.major);
+  form.append("cards[education][end_date]", educationAnswers.gradDate);
+  if (educationAnswers.gpa !== null) {
+    form.append("cards[education][gpa]", educationAnswers.gpa);
+  }
+
+  questionAnswers.forEach((qa, i) => {
+    form.append(`customQuestions[${i}][question]`, qa.question);
+    form.append(`customQuestions[${i}][answer]`, qa.answer);
+  });
 
   // ats_board_token = company slug (e.g. "grab"), ats_job_id = posting UUID
   const url = `https://jobs.lever.co/${job.ats_board_token}/apply/${job.ats_job_id}`;
