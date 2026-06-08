@@ -264,4 +264,13 @@ guideline
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+<<<<<<< HEAD
 >>>>>>> 28e974d4 (Initial commit from Create Next App)
+=======
+
+# Graphify knowledge graph output
+graphify-out/
+
+# Agent context for parallel execution
+agent-context/
+>>>>>>> d1e02f16 (chore: add vitest testing infrastructure and update gitignore)
