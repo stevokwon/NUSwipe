@@ -15,13 +15,20 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
 
     const supabase = createClient();
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/confirm`,
+      }
+    });
 
     if (error) {
       toast.error(error.message);
@@ -35,9 +42,43 @@ export default function SignupPage() {
       await (supabase as any).from("profiles").upsert({ id: data.user.id, email });
     }
 
-    toast.success("Account created! Complete your profile to start swiping.");
-    router.push("/profile");
-    router.refresh();
+    if (!data.session) {
+      setIsSubmitted(true);
+      setLoading(false);
+      toast.success("Check your email to confirm your account!");
+    } else {
+      toast.success("Account created! Complete your profile to start swiping.");
+      router.push("/profile");
+      router.refresh();
+    }
+  }
+
+  if (isSubmitted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900">
+        <Card className="w-full max-w-sm border-white/10 bg-white/5 backdrop-blur-sm text-white text-center">
+          <CardHeader>
+            <div className="text-4xl mb-4">📧</div>
+            <CardTitle className="text-2xl font-bold">Check your email</CardTitle>
+            <CardDescription className="text-slate-300">
+              We've sent a confirmation link to <span className="text-white font-medium">{email}</span>.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-slate-400">
+              Please click the link in the email to activate your account. If you don't see it, check your spam folder.
+            </p>
+            <Button 
+              variant="outline" 
+              className="w-full border-white/20 hover:bg-white/10 text-white"
+              onClick={() => setIsSubmitted(false)}
+            >
+              Back to Sign Up
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
