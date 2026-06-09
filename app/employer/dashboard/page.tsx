@@ -86,8 +86,9 @@ export default function EmployerDashboard() {
         .order("created_at", { ascending: false });
 
       if (jobsError) {
-        console.error("Jobs fetch error:", jobsError);
-        throw new Error(jobsError.message);
+        console.error("Jobs fetch error object:", JSON.stringify(jobsError, null, 2));
+        console.error("Jobs fetch error message:", jobsError.message);
+        throw new Error(jobsError.message || "Failed to fetch jobs");
       }
       setJobs(jobsData as Job[]);
 

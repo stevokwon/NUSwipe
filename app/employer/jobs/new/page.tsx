@@ -172,7 +172,7 @@ export default function NewJobPage() {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => router.back()}
+              onClick={() => router.push("/employer/dashboard")}
               className="text-slate-400 hover:text-white"
             >
               <ArrowLeft className="h-5 w-5" />
