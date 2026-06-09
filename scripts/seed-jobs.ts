@@ -102,21 +102,31 @@ export async function seedJobs(
 
 async function main(): Promise<void> {
   const { readFileSync } = await import("fs");
-  const { createClient } = await import("@supabase/supabase-js");
 
   const args = process.argv.slice(2);
   const csvPath = args.find((a) => !a.startsWith("--")) ?? "supabase/jobs.csv";
   const dryRun = args.includes("--dry-run");
 
-  const url = process.env["SUPABASE_URL"];
-  const key = process.env["SUPABASE_SERVICE_ROLE_KEY"];
-  if (!url || !key) {
-    console.error("Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
-    process.exit(1);
+  // Credentials are not needed for dry-run — validation only parses + validates the CSV.
+  // This lets CI run schema validation without a service role key.
+  let supabase: JobsClient;
+  if (dryRun) {
+    supabase = {
+      from() {
+        throw new Error("Supabase client is not available in --dry-run mode");
+      },
+    } as JobsClient;
+  } else {
+    const key = process.env["SUPABASE_SERVICE_ROLE_KEY"];
+    if (!url || !key) {
+      console.error("Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
+      process.exit(1);
+    }
+    const { createClient } = await import("@supabase/supabase-js");
+    supabase = createClient(url, key);
   }
 
   const csvContent = readFileSync(csvPath, "utf-8");
-  const supabase = createClient(url, key);
 
   const { inserted, errors } = await seedJobs(csvContent, supabase, { dryRun });
 
