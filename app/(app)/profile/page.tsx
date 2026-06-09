@@ -14,7 +14,7 @@ export default async function ProfilePage() {
   if (!user) redirect("/login");
 
   let { data: profile } = await supabase
-    .from("profiles")
+    .from("candidates")
     .select("*")
     .eq("id", user.id)
     .single();
@@ -23,11 +23,11 @@ export default async function ProfilePage() {
   if (!profile) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
-      .from("profiles")
+      .from("candidates")
       .upsert({ id: user.id, email: user.email ?? "" });
 
     const { data: fresh } = await supabase
-      .from("profiles")
+      .from("candidates")
       .select("*")
       .eq("id", user.id)
       .single();
