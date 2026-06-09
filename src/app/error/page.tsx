@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export default function AuthErrorPage() {
   return (
@@ -18,12 +19,18 @@ export default function AuthErrorPage() {
             This could be because the link has expired or has already been used. Please try signing up again or contact support if the problem persists.
           </p>
           <div className="flex flex-col gap-2">
-            <Button asChild className="bg-purple-600 hover:bg-purple-700">
-              <Link href="/signup">Back to Candidate Sign Up</Link>
-            </Button>
-            <Button asChild variant="outline" className="border-white/20 hover:bg-white/10">
-              <Link href="/employer/signup">Back to Employer Sign Up</Link>
-            </Button>
+            <Link 
+              href="/signup" 
+              className={cn(buttonVariants({ variant: "default" }), "bg-purple-600 hover:bg-purple-700 w-full")}
+            >
+              Back to Candidate Sign Up
+            </Link>
+            <Link 
+              href="/employer/signup" 
+              className={cn(buttonVariants({ variant: "outline" }), "border-white/20 hover:bg-white/10 w-full")}
+            >
+              Back to Employer Sign Up
+            </Link>
           </div>
         </CardContent>
       </Card>

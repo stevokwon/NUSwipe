@@ -21,12 +21,34 @@ export default function LoginPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       toast.error(error.message);
       setLoading(false);
       return;
+    }
+
+    // Verify role - prevent employers from logging into candidate portal
+    if (data.user) {
+      // 1. Check metadata (instant and reliable)
+      const userRole = data.user.user_metadata?.role;
+      
+      // 2. Fallback check profile table
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .single();
+
+      const finalRole = userRole || profile?.role;
+
+      if (finalRole === "employer") {
+        await supabase.auth.signOut();
+        toast.error("This account is registered as an Employer. Please use the Employer Portal.");
+        setLoading(false);
+        return;
+      }
     }
 
     router.push("/swipe");

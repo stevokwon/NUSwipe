@@ -23,7 +23,9 @@ export default function EmployerSignupPage() {
     e.preventDefault();
     setLoading(true);
 
+    console.log("Initializing Supabase with URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
     const supabase = createClient();
+    console.log("Attempting signUp for:", email);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -38,10 +40,12 @@ export default function EmployerSignupPage() {
     });
 
     if (error) {
+      console.error("SignUp Error:", error);
       toast.error(error.message);
       setLoading(false);
       return;
     }
+    console.log("SignUp Success:", data);
 
     if (data.user) {
       // Create the profile row with the 'employer' role

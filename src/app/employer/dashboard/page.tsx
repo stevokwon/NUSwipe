@@ -43,6 +43,7 @@ export default function EmployerDashboard() {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
 
       if (authError || !user) {
+        console.error("Auth error:", authError);
         router.push("/employer/login");
         return;
       }
@@ -55,12 +56,27 @@ export default function EmployerDashboard() {
         .eq("id", user.id)
         .single();
 
-      if (profileError || !profileData) {
-        toast.error("Employer profile not found.");
-        return;
+      if (profileError) {
+        console.warn("Profile fetch warning (might not exist yet):", profileError.message);
+        
+        // Fallback: If profile doesn't exist yet, use user metadata so the dashboard doesn't crash
+        if (user.user_metadata?.role === "employer") {
+          setEmployerProfile({
+            id: user.id,
+            email: user.email || "",
+            preferred_name: user.user_metadata.company_name || "Company",
+            role: "employer",
+            first_name: "",
+            last_name: "",
+            // ... add other default fields to satisfy the Profile type if needed
+          } as Profile);
+        } else {
+          toast.error("Employer profile not found. Please ensure you are registered as an employer.");
+          return;
+        }
+      } else {
+        setEmployerProfile(profileData as Profile);
       }
-      const profile = profileData as unknown as Profile;
-      setEmployerProfile(profile);
 
       // Fetch employer's jobs
       const { data: jobsData, error: jobsError } = await supabase
@@ -69,21 +85,31 @@ export default function EmployerDashboard() {
         .eq("posted_by", user.id)
         .order("created_at", { ascending: false });
 
-      if (jobsError) throw jobsError;
+      if (jobsError) {
+        console.error("Jobs fetch error:", jobsError);
+        throw new Error(jobsError.message);
+      }
       setJobs(jobsData as Job[]);
 
       // Fetch applications (Inner join on jobs to filter by employer)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: appsData, error: appsError } = await (supabase as any)
+      const { data: appsData, error: appsError } = await supabase
         .from("applications")
-        .select("*, jobs!inner(*), profiles(*)")
+        .select(`
+          *,
+          jobs:job_id!inner(*),
+          profiles:user_id(*)
+        `)
         .eq("jobs.posted_by", user.id);
 
-      if (appsError) throw appsError;
-      setApplications(appsData as ApplicationWithCandidate[]);
+      if (appsError) {
+        console.error("Applications fetch error:", appsError);
+        throw new Error(appsError.message);
+      }
+      setApplications(appsData as unknown as ApplicationWithCandidate[]);
     } catch (err: any) {
-      toast.error(err.message || "Failed to load dashboard data");
-      console.error(err);
+      const errorMessage = err.message || "Failed to load dashboard data";
+      toast.error(errorMessage);
+      console.error("Dashboard load failure:", err);
     } finally {
       setLoading(false);
     }
