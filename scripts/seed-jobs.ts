@@ -117,6 +117,7 @@ async function main(): Promise<void> {
       },
     } as JobsClient;
   } else {
+    const url = process.env["SUPABASE_URL"];
     const key = process.env["SUPABASE_SERVICE_ROLE_KEY"];
     if (!url || !key) {
       console.error("Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
