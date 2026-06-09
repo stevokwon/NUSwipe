@@ -48,8 +48,7 @@ export async function proxy(request: NextRequest) {
       .select("role")
       .eq("id", user.id)
       .single();
-    
-    const role = profile?.role || "candidate";
+    const role = profile?.role;
 
     if (role === "employer") {
       if (isCandidateRoute || pathname === "/login" || pathname === "/signup" || pathname === "/employer/login" || pathname === "/employer/signup") {
@@ -57,7 +56,8 @@ export async function proxy(request: NextRequest) {
           return NextResponse.redirect(new URL("/employer/dashboard", request.url));
         }
       }
-    } else {
+    } else if (role === "candidate") {
+      // Candidate route logic:
       if (isEmployerRoute || pathname === "/login" || pathname === "/signup" || pathname === "/employer/login" || pathname === "/employer/signup") {
         if (pathname !== "/swipe") {
           return NextResponse.redirect(new URL("/swipe", request.url));

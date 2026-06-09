@@ -68,9 +68,9 @@ describe("JobCard", () => {
     expect(el.textContent).toBe("GS");
   });
 
-  it("does not render a match score", () => {
+  it("renders a match score", () => {
     render(<JobCard job={baseJob} />);
-    // The fake matchScore badge rendered "XX% match" — it must be gone
-    expect(screen.queryByText(/match/i)).toBeNull();
+    // The match score badge should be visible
+    expect(screen.getByText(/match/i)).not.toBeNull();
   });
 });
