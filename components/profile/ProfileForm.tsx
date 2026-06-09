@@ -94,7 +94,7 @@ export function ProfileForm({ profile, userId }: Props) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
-      .from("profiles")
+      .from("candidates")
       .update({ ...form, updated_at: new Date().toISOString() })
       .eq("id", userId);
 

@@ -36,12 +36,6 @@ export default function SignupPage() {
       return;
     }
 
-    // Create the candidate row manually
-    if (data.user) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from("candidates").upsert({ id: data.user.id, email });
-    }
-
     if (!data.session) {
       setIsSubmitted(true);
       setLoading(false);
