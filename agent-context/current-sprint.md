@@ -37,8 +37,8 @@ relevance score → personalised swipe feed order
 | Task | Branch | Status | Merged into |
 |------|--------|--------|-------------|
 | B1 — JobSeedRowSchema (Zod) | feat/b/B1-seed-schema | merged | sprint-2/real-job-feed |
-| B2 — Seed validation + upsert script | feat/b/B2-seed-script | open PR | sprint-2/real-job-feed |
-| B3 — Curated jobs CSV | feat/b/B3-jobs-csv | not started | sprint-2/real-job-feed |
+| B2 — Seed validation + upsert script | feat/b/B2-seed-script | merged | sprint-2/real-job-feed |
+| B3 — Curated jobs CSV | feat/b/B3-curated-jobs-csv | merged · 3687f600 | sprint-2/real-job-feed |
 
 ### Lane A — Feed Query
 | Task | Branch | Status |
@@ -54,3 +54,4 @@ relevance score → personalised swipe feed order
 
 ## Active task for this session
 <!-- FILL THIS IN before starting each session -->
+<!-- B3 done 2026-06-09. Lane B complete. Lane A (feed query) is unblocked. -->
