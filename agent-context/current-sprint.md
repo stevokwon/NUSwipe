@@ -6,14 +6,13 @@ Branch naming: feat/{lane-lowercase}/{task-id}-{short-description}
 PRs back to sprint-2/real-job-feed, not main.
 main only updated when full sprint is reviewed and tagged.
 
-## Graph state (semantic pass, post Sprint 1)
-- 201 nodes · 248 edges · 31 communities
-- God nodes: Sprint1Archive(12), ProductSpec(8), AGENTS.md(8),
-  APACSchema(7), CLAUDE.md(7), apac-mapper(5)
-- CLAUDE.md betweenness centrality: 0.029 (cross-community bridge)
-- Community 0 (APAC Profile & Legal Gate): 37 nodes, cohesion 0.08 — RISK
-- Community 3 (Card & Progress UI): 20 nodes, cohesion 0.11
-- Community 2 (Supabase & UI Primitives): 23 nodes, cohesion 0.13
+## Graph state (post semantic pass — 2026-06-09)
+- 132 nodes · 184 edges · 14 communities
+- God nodes: setupClient(3), triggerSwipe(3), update(3), main(3), makeJobsQuery(2),
+  makeSeenQuery(2), submitApplication(2), recordSkip(2), handleResumeUpload(2), handleSave(2)
+- Community 8 (seed pipeline): main + seedJobs + validatedCount, cohesion 0.38
+- Community 2 (swipe core): recordSkip + submitApplication + triggerSwipe
+- Community 5 (feed query): makeJobsQuery + makeSeenQuery + setupClient
 
 ## Sprint 2 goal
 Pilot-ready real job feed.
@@ -29,7 +28,7 @@ relevance score → personalised swipe feed order
 ## Known pre-existing issues (carried from Sprint 1)
 - app/api/apply/route.ts:30,48 — SELECT * on profiles and jobs
 - eslint-disable in route.ts:94,100 and applications/route.ts:63,100
-- Community 0 cohesion 0.08 — grew by accretion, needs splitting
+- seenIds lookup errors silently swallowed in GET /api/jobs — covered by A2 test 3 ✓
 
 ## Merge state
 
@@ -43,15 +42,14 @@ relevance score → personalised swipe feed order
 ### Lane A — Feed Query
 | Task | Branch | Status |
 |------|--------|--------|
-| A1 — GET /api/jobs: explicit columns + DB-level exclusion | — | not started |
-| A2 — Jobs feed integration test | — | not started |
+| A1 — GET /api/jobs: explicit columns + DB-level exclusion | feat/a/A1-jobs-feed-query | merged · d2777059 |
+| A2 — Jobs feed integration test | feat/a/A2-jobs-feed-integration-test | merged · 55700fbf |
 
 ### Lane C — Job Card UI
 | Task | Branch | Status |
 |------|--------|--------|
-| C1 — JobCard real fields | — | not started |
-| C2 — SwipeStack empty + loading states | — | not started |
+| C1 — JobCard real fields | sprint-2/real-job-feed | merged · edec151e |
+| C2 — SwipeStack empty + loading states | feat/c/C2-swipestack-states | merged · 4774783d |
 
-## Active task for this session
-<!-- FILL THIS IN before starting each session -->
-<!-- B3 done 2026-06-09. Lane B complete. Lane A (feed query) is unblocked. -->
+## Sprint 2 status: COMPLETE — merged to main, tagged sprint-2/real-job-feed
+<!-- 2026-06-09: All 7 tasks shipped. Smoke test passed. Sprint 3 context TBD. -->
