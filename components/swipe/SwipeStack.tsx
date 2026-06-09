@@ -11,9 +11,10 @@ const FILTERS = ["All Roles", "Internships", "Full-time", "SG Only", "Visa ✓"]
 
 interface Props {
   initialJobs: Job[];
+  isLoading?: boolean;
 }
 
-export function SwipeStack({ initialJobs }: Props) {
+export function SwipeStack({ initialJobs, isLoading = false }: Props) {
   const [jobs]          = useState<Job[]>(initialJobs);
   const [current, setCurrent]   = useState(0);
   const [drag, setDrag]         = useState({ x: 0, y: 0, active: false });
@@ -148,11 +149,46 @@ export function SwipeStack({ initialJobs }: Props) {
   const remaining = Math.max(0, jobs.length - current);
   const progress  = jobs.length > 0 ? (current / jobs.length) * 100 : 0;
 
+  // ── Loading state ────────────────────────────────────────────────────────────
+
+  if (isLoading) {
+    return (
+      <div
+        data-testid="swipe-loading"
+        className="w-full max-w-[440px] mx-auto animate-pulse rounded-3xl border border-white/10 p-5"
+        style={{ background: "rgba(255,255,255,0.06)" }}
+      >
+        {/* Logo + title skeleton */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-2xl bg-white/10 shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 bg-white/10 rounded w-1/3" />
+            <div className="h-4 bg-white/10 rounded w-2/3" />
+          </div>
+        </div>
+        {/* Pills skeleton */}
+        <div className="flex gap-2 mb-4">
+          <div className="h-6 bg-white/10 rounded-full w-20" />
+          <div className="h-6 bg-white/10 rounded-full w-24" />
+        </div>
+        {/* Description skeleton */}
+        <div className="space-y-2">
+          <div className="h-3 bg-white/10 rounded w-full" />
+          <div className="h-3 bg-white/10 rounded w-5/6" />
+          <div className="h-3 bg-white/10 rounded w-4/6" />
+        </div>
+      </div>
+    );
+  }
+
   // ── Done state ───────────────────────────────────────────────────────────────
 
   if (done || jobs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
+      <div
+        data-testid="swipe-empty"
+        className="flex flex-col items-center justify-center gap-4 py-20 text-center"
+      >
         <div className="text-6xl">🎉</div>
         <h2 className="text-2xl font-bold text-white">You're all caught up!</h2>
         <p className="text-slate-400 text-sm max-w-xs">
@@ -166,7 +202,7 @@ export function SwipeStack({ initialJobs }: Props) {
   // ── Main render ──────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col w-full max-w-[440px] mx-auto">
+    <div data-testid="swipe-stack" className="flex flex-col w-full max-w-[440px] mx-auto">
 
       {/* Stats row */}
       <div className="flex items-center justify-end gap-4 px-1 pb-3">
