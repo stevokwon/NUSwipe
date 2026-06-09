@@ -50,32 +50,18 @@ export default function EmployerDashboard() {
       setCurrentUser(user);
 
       // Fetch employer profile
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
+      const { data: employerData, error: employerError } = await supabase
+        .from("employers")
         .select("*")
         .eq("id", user.id)
         .single();
 
-      if (profileError) {
-        console.warn("Profile fetch warning (might not exist yet):", profileError.message);
-        
-        // Fallback: If profile doesn't exist yet, use user metadata so the dashboard doesn't crash
-        if (user.user_metadata?.role === "employer") {
-          setEmployerProfile({
-            id: user.id,
-            email: user.email || "",
-            preferred_name: user.user_metadata.company_name || "Company",
-            role: "employer",
-            first_name: "",
-            last_name: "",
-            // ... add other default fields to satisfy the Profile type if needed
-          } as Profile);
-        } else {
-          toast.error("Employer profile not found. Please ensure you are registered as an employer.");
-          return;
-        }
+      if (employerError) {
+        console.warn("Employer fetch error:", employerError.message);
+        toast.error("Employer profile not found.");
+        return;
       } else {
-        setEmployerProfile(profileData as Profile);
+        setEmployerProfile(employerData as unknown as Profile);
       }
 
       // Fetch employer's jobs

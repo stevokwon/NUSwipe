@@ -66,13 +66,13 @@ export async function POST(req: NextRequest) {
   }
 
   // Fetch employer profile to verify role
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role")
+  const { data: employer, error: employerError } = await supabase
+    .from("employers")
+    .select("id")
     .eq("id", user.id)
     .single();
 
-  if (profileError || !profile || (profile as any).role !== "employer") {
+  if (employerError || !employer) {
     return NextResponse.json(
       { error: "Forbidden: Only employers can post jobs" },
       { status: 403 }

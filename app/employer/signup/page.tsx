@@ -48,20 +48,21 @@ export default function EmployerSignupPage() {
     console.log("SignUp Success:", data);
 
     if (data.user) {
-      // Create the profile row with the 'employer' role
-      const nameParts = contactName.split(" ");
-      const firstName = nameParts[0] || "";
-      const lastName = nameParts.slice(1).join(" ") || "";
-
+      // Create the employer row in the new 'employers' table
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from("profiles").upsert({
+      const { error: upsertError } = await (supabase as any).from("employers").upsert({
         id: data.user.id,
         email,
-        role: "employer",
-        first_name: firstName,
-        last_name: lastName,
-        preferred_name: companyName, // Store company name in preferred_name
+        company_name: companyName,
+        contact_name: contactName,
       });
+
+      if (upsertError) {
+        console.error("Employer Upsert Error:", upsertError);
+        toast.error(`Employer profile creation failed: ${upsertError.message}`);
+        setLoading(false);
+        return;
+      }
     }
 
     if (!data.session) {

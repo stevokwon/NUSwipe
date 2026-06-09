@@ -31,21 +31,16 @@ export default function EmployerLoginPage() {
 
     // Verify role - prevent candidates from logging into employer portal
     if (data.user) {
-      // 1. Check metadata (instant and reliable)
-      const userRole = data.user.user_metadata?.role;
-
-      // 2. Fallback check profile table
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
+      // Check if user exists in employers table
+      const { data: employer, error: fetchError } = await supabase
+        .from("employers")
+        .select("id")
         .eq("id", data.user.id)
         .single();
 
-      const finalRole = userRole || profile?.role;
-
-      if (finalRole !== "employer") {
+      if (fetchError || !employer) {
         await supabase.auth.signOut();
-        toast.error("This account is registered as a Candidate. Please use the Candidate Portal.");
+        toast.error("This account is not registered as an Employer. Please use the Candidate Portal.");
         setLoading(false);
         return;
       }

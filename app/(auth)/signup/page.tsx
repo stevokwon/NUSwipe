@@ -29,10 +29,10 @@ export default function SignupPage() {
       return;
     }
 
-    // Create the profile row manually (more reliable than a DB trigger)
+    // Create the candidate row manually
     if (data.user) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from("profiles").upsert({ id: data.user.id, email });
+      await (supabase as any).from("candidates").upsert({ id: data.user.id, email });
     }
 
     toast.success("Account created! Complete your profile to start swiping.");

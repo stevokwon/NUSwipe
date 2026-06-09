@@ -43,21 +43,21 @@ export async function proxy(request: NextRequest) {
   }
 
   if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
+    // Check if user exists in employers table
+    const { data: employer } = await supabase
+      .from("employers")
+      .select("id")
       .eq("id", user.id)
       .single();
-    const role = profile?.role;
-
-    if (role === "employer") {
+    
+    if (employer) {
       if (isCandidateRoute || pathname === "/login" || pathname === "/signup" || pathname === "/employer/login" || pathname === "/employer/signup") {
         if (pathname !== "/employer/dashboard") {
           return NextResponse.redirect(new URL("/employer/dashboard", request.url));
         }
       }
-    } else if (role === "candidate") {
-      // Candidate route logic:
+    } else {
+      // Assume candidate
       if (isEmployerRoute || pathname === "/login" || pathname === "/signup" || pathname === "/employer/login" || pathname === "/employer/signup") {
         if (pathname !== "/swipe") {
           return NextResponse.redirect(new URL("/swipe", request.url));
