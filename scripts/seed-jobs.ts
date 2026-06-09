@@ -111,9 +111,12 @@ async function main(): Promise<void> {
   // This lets CI run schema validation without a service role key.
   let supabase: JobsClient;
   if (dryRun) {
-    supabase = {} as JobsClient;
+    supabase = {
+      from() {
+        throw new Error("Supabase client is not available in --dry-run mode");
+      },
+    } as JobsClient;
   } else {
-    const url = process.env["SUPABASE_URL"];
     const key = process.env["SUPABASE_SERVICE_ROLE_KEY"];
     if (!url || !key) {
       console.error("Error: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
