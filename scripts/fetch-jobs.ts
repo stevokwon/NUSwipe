@@ -37,15 +37,8 @@ const COMPANIES: CompanyConfig[] = [
     location_filter: ["singapore", " sg", "hong kong"],
     salary_hint: "SGD 6,000–8,000 / month",
   },
-  {
-    company: "Shopee",
-    ats_type: "greenhouse",
-    ats_board_token: "shopee",
-    logo_url: null,
-    visa_sponsorship: false,
-    location_filter: ["singapore", "hong kong"],
-    salary_hint: null,
-  },
+  // Shopee removed — their Greenhouse board (boards.greenhouse.io/shopee) returns 404.
+  // Shopee jobs are maintained as manually curated entries in supabase/seed.sql.
   {
     company: "HoYoverse",
     ats_type: "greenhouse",
@@ -71,25 +64,25 @@ const COMPANIES: CompanyConfig[] = [
     ats_board_token: "nium",
     logo_url: null,
     visa_sponsorship: false,
-    location_filter: ["singapore", "hong kong"],
+    location_filter: [], // Lever doesn't populate location for this board
     salary_hint: null,
   },
   {
     company: "ShopBack",
     ats_type: "lever",
-    ats_board_token: "shopback",
+    ats_board_token: "shopback-2",
     logo_url: null,
     visa_sponsorship: false,
-    location_filter: ["singapore", "hong kong"],
+    location_filter: [], // Lever doesn't populate location for this board
     salary_hint: null,
   },
   {
     company: "Binance",
     ats_type: "lever",
-    ats_board_token: "binance-1",
+    ats_board_token: "binance",
     logo_url: null,
     visa_sponsorship: false,
-    location_filter: ["singapore", "hong kong"],
+    location_filter: [], // Lever doesn't populate location for this board
     salary_hint: null,
   },
 ];
