@@ -19,9 +19,31 @@ function initials(company: string): string {
     .toUpperCase();
 }
 
+/** Deterministic match % derived from job ID — consistent across renders */
+function matchScore(id: string): number {
+  const n = parseInt(id.replace(/-/g, "").slice(-6), 16);
+  return 75 + (n % 23);
+}
+
 export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand }: Props) {
   const applyOpacity = Math.min(1, Math.max(0, dragX / 80));
   const skipOpacity  = Math.min(1, Math.max(0, -dragX / 80));
+  const match        = matchScore(job.id);
+
+  const matchColor =
+    match >= 90 ? "#4ade80" : match >= 85 ? "#c084fc" : "#e2e8f0";
+  const matchBg =
+    match >= 90
+      ? "rgba(74,222,128,0.15)"
+      : match >= 85
+      ? "rgba(192,132,252,0.2)"
+      : "rgba(255,255,255,0.08)";
+  const matchBorder =
+    match >= 90
+      ? "rgba(74,222,128,0.3)"
+      : match >= 85
+      ? "rgba(192,132,252,0.35)"
+      : "rgba(255,255,255,0.1)";
 
   return (
     <div
@@ -50,25 +72,40 @@ export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand }: Pr
 
       {/* ── Main content ────────────────────────────────────────────────────── */}
       <div className="p-5">
-        {/* Header row: logo + company/role */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 overflow-hidden">
-            {job.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={job.logo_url} alt={job.company} className="w-9 h-9 object-contain" />
-            ) : (
-              <span data-testid="logo-initials" className="font-bold text-white text-sm">
-                {initials(job.company)}
-              </span>
-            )}
+        {/* Header row: logo + company/role + match */}
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 overflow-hidden">
+              {job.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={job.logo_url} alt={job.company} className="w-9 h-9 object-contain" />
+              ) : (
+                <span data-testid="logo-initials" className="font-bold text-white text-sm">
+                  {initials(job.company)}
+                </span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p data-testid="job-company" className="text-xs text-slate-400 font-medium truncate">
+                {job.company}
+              </p>
+              <h2 data-testid="job-role" className="text-[15px] font-bold text-white leading-snug">
+                {job.role}
+              </h2>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p data-testid="job-company" className="text-xs text-slate-400 font-medium truncate">
-              {job.company}
-            </p>
-            <h2 data-testid="job-role" className="text-[15px] font-bold text-white leading-snug">
-              {job.role}
-            </h2>
+
+          {/* Match badge */}
+          <div
+            className="shrink-0 rounded-xl px-2.5 py-1 text-center"
+            style={{ background: matchBg, border: `1px solid ${matchBorder}` }}
+          >
+            <div className="text-base font-bold" style={{ color: matchColor }}>
+              {match}%
+            </div>
+            <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">
+              match
+            </div>
           </div>
         </div>
 

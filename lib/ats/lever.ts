@@ -68,4 +68,3 @@ export async function submitToLever(
 
   return "lever-submitted";
 }
-

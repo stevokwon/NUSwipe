@@ -47,8 +47,5 @@ next-env.d.ts
 graphify-out/
 
 # Agent context — sprint and task tracking (committed intentionally)
-# graphify-out/ chunk files during parallel extraction are transient
-graphify-out/.graphify_chunk_*.json
-
-# Local Sprint and task tracking
 agent-context/
+

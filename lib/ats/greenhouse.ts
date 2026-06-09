@@ -49,6 +49,8 @@ export async function submitToGreenhouse(
         },
       ],
     }),
+    // Token needed for some boards
+    mapped_url_token: job.ats_board_token,
   };
 
   const url = `https://boards-api.greenhouse.io/v1/boards/${job.ats_board_token}/jobs/${job.ats_job_id}/applications`;
@@ -68,4 +70,3 @@ export async function submitToGreenhouse(
   // Greenhouse returns { id: number, ... }
   return String(data.id ?? "submitted");
 }
-

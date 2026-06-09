@@ -32,17 +32,38 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Protected routes: redirect unauthenticated users to /login
-  const protectedPrefixes = ["/swipe", "/tracker", "/profile"];
-  const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p));
+  const isCandidateRoute = ["/swipe", "/tracker", "/profile"].some((p) => pathname.startsWith(p));
+  const isEmployerRoute = pathname.startsWith("/employer") && !pathname.startsWith("/employer/login") && !pathname.startsWith("/employer/signup");
 
-  if (isProtected && !user) {
+  if ((isCandidateRoute || isEmployerRoute) && !user) {
+    if (pathname.startsWith("/employer")) {
+      return NextResponse.redirect(new URL("/employer/login", request.url));
+    }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Redirect authenticated users away from auth pages
-  if ((pathname === "/login" || pathname === "/signup") && user) {
-    return NextResponse.redirect(new URL("/swipe", request.url));
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    
+    const role = profile?.role || "candidate";
+
+    if (role === "employer") {
+      if (isCandidateRoute || pathname === "/login" || pathname === "/signup" || pathname === "/employer/login" || pathname === "/employer/signup") {
+        if (pathname !== "/employer/dashboard") {
+          return NextResponse.redirect(new URL("/employer/dashboard", request.url));
+        }
+      }
+    } else {
+      if (isEmployerRoute || pathname === "/login" || pathname === "/signup" || pathname === "/employer/login" || pathname === "/employer/signup") {
+        if (pathname !== "/swipe") {
+          return NextResponse.redirect(new URL("/swipe", request.url));
+        }
+      }
+    }
   }
 
   return supabaseResponse;

@@ -14,7 +14,7 @@ const COLUMNS: { status: ApplicationStatus; label: string; icon: string; color: 
 ];
 
 // Exported for unit testing. Pending apps are excluded from both numerator and
-// denominator — they are unconfirmed submissions (URL-fallback tab opens) and
+// denominator — they are unconfirmed submissions (URL-fallback job opened in new tab) and
 // should not inflate the total or depress the response rate.
 export function computeResponseRate(applications: ApplicationWithJob[]): number {
   const confirmed = applications.filter((a) => a.status !== "pending");
