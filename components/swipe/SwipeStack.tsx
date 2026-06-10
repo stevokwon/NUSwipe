@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import type { Job } from "@/lib/types";
-import { resolveApplyToast } from "@/lib/swipe/apply-toast";
+import type { ScoreResult } from "@/lib/scoring/rule-based";
 import { JobCard } from "./JobCard";
 
 const SWIPE_THRESHOLD = 100;
@@ -12,9 +12,10 @@ const FILTERS = ["All Roles", "Internships", "Full-time", "SG Only", "Visa ✓"]
 interface Props {
   initialJobs: Job[];
   isLoading?: boolean;
+  scores?: Record<string, ScoreResult>;
 }
 
-export function SwipeStack({ initialJobs, isLoading = false }: Props) {
+export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
   const [jobs]          = useState<Job[]>(initialJobs);
   const [current, setCurrent]   = useState(0);
   const [drag, setDrag]         = useState({ x: 0, y: 0, active: false });
@@ -22,7 +23,7 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
   const [lastAction, setLastAction]     = useState<{ job: Job; dir: "left" | "right" } | null>(null);
   const [showMatch, setShowMatch]       = useState(false);
   const [submitting, setSubmitting]     = useState(false);
-  const [activeFilter, setActiveFilter] = useState(0);
+  const [activeFilters, setActiveFilters] = useState<Set<number>>(new Set());
   const [expanded, setExpanded]         = useState(false);
 
   const cardRef  = useRef<HTMLDivElement>(null);
@@ -31,9 +32,49 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
   // Keep a ref to triggerSwipe so the keyboard handler never goes stale
   const triggerRef = useRef<(dir: "left" | "right") => void>(() => {});
 
-  const topJob  = jobs[current]     ?? null;
-  const nextJob = jobs[current + 1] ?? null;
-  const done    = current >= jobs.length;
+  // ── Filter logic ─────────────────────────────────────────────────────────────
+
+  function toggleFilter(index: number): void {
+    if (index === 0) {
+      setActiveFilters(new Set());
+      return;
+    }
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      const individualCount = FILTERS.length - 1;
+      if (next.size === individualCount) {
+        return new Set();
+      }
+      return next;
+    });
+  }
+
+  const filteredJobs: Job[] = activeFilters.size === 0
+    ? jobs
+    : jobs.filter((job) => {
+        if (activeFilters.has(1)) {
+          if (!job.tags.some((t) => t.toLowerCase().includes("internship"))) return false;
+        }
+        if (activeFilters.has(2)) {
+          if (job.tags.some((t) => t.toLowerCase().includes("internship"))) return false;
+        }
+        if (activeFilters.has(3)) {
+          if (!job.location.toLowerCase().match(/\bsg\b|singapore/)) return false;
+        }
+        if (activeFilters.has(4)) {
+          if (!job.visa_sponsorship) return false;
+        }
+        return true;
+      });
+
+  const topJob  = filteredJobs[current]     ?? null;
+  const nextJob = filteredJobs[current + 1] ?? null;
+  const done    = current >= filteredJobs.length;
 
   // ── Drag handlers ────────────────────────────────────────────────────────────
 
@@ -73,11 +114,10 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
 
     if (dir === "right") {
       setAppliedCount((c) => c + 1);
-      const outcome = await submitApplication(job);
-      if (outcome === "direct") {
-        setShowMatch(true);
-        setTimeout(() => setShowMatch(false), 1800);
-      }
+      toast.success(`Applied to ${job.company} ✓`);   // optimistic, immediate
+      setShowMatch(true);
+      setTimeout(() => setShowMatch(false), 1800);
+      submitApplication(job);                          // fire-and-forget (no await)
     } else {
       await recordSkip(job);
     }
@@ -86,7 +126,7 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
   // Keep triggerRef current every render
   triggerRef.current = triggerSwipe;
 
-  async function submitApplication(job: Job): Promise<"direct" | "redirect" | "error"> {
+  async function submitApplication(job: Job): Promise<void> {
     setSubmitting(true);
     try {
       const res  = await fetch("/api/apply", {
@@ -98,22 +138,32 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
 
       if (!res.ok) {
         toast.error(data.error ?? "Application failed");
-        return "error";
+        return;
       }
 
-      const spec = resolveApplyToast(data, job.company);
-      if (spec.outcome === "redirect") {
-        window.open(data.redirect, "_blank", "noopener");
+      // URL-fallback job: open the external form in a new tab so the user can
+      // complete it manually. The application row is already created as 'pending'.
+      if (data.redirect) {
+        window.open(data.redirect as string, "_blank", "noopener,noreferrer");
+        return;
       }
-      if (spec.variant === "success") {
-        toast.success(spec.message);
-      } else {
-        toast.info(spec.message);
+
+      if (data.extensionToken) {
+        window.postMessage(
+          {
+            type: "NUSW_SUBMIT",
+            jobUrl: job.ats_fallback_url ?? "",
+            jobId: job.id,
+            extensionToken: data.extensionToken as string,
+            profile: data.profile,
+          },
+          "*"
+        );
       }
+
       if (data.visaWarning) {
         toast.warning(data.visaWarning);
       }
-      return spec.outcome;
     } finally {
       setSubmitting(false);
     }
@@ -146,11 +196,16 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // Reset current index when filters change to avoid out-of-bounds
+  useEffect(() => {
+    setCurrent(0);
+  }, [activeFilters]);
+
   // ── Derived values ───────────────────────────────────────────────────────────
 
   const rotation  = drag.x * 0.08;
-  const remaining = Math.max(0, jobs.length - current);
-  const progress  = jobs.length > 0 ? (current / jobs.length) * 100 : 0;
+  const remaining = Math.max(0, filteredJobs.length - current);
+  const progress  = filteredJobs.length > 0 ? (current / filteredJobs.length) * 100 : 0;
 
   // ── Loading state ────────────────────────────────────────────────────────────
 
@@ -186,7 +241,7 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
 
   // ── Done state ───────────────────────────────────────────────────────────────
 
-  if (done || jobs.length === 0) {
+  if (done || filteredJobs.length === 0) {
     return (
       <div
         data-testid="swipe-empty"
@@ -230,19 +285,25 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
 
       {/* Filter pills */}
       <div className="flex gap-2 mb-5 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {FILTERS.map((f, i) => (
-          <button
-            key={f}
-            onClick={() => setActiveFilter(i)}
-            className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
-              i === activeFilter
-                ? "bg-purple-600/40 border-purple-400/60 text-purple-200"
-                : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            {f}
-          </button>
-        ))}
+        {FILTERS.map((f, i) => {
+          const isActive = i === 0
+            ? activeFilters.size === 0
+            : activeFilters.has(i);
+
+          return (
+            <button
+              key={f}
+              onClick={() => toggleFilter(i)}
+              className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                isActive
+                  ? "bg-purple-600/40 border-purple-400/60 text-purple-200"
+                  : "bg-white/5 border-white/10 text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              {f}
+            </button>
+          );
+        })}
       </div>
 
       {/* Card stack */}
@@ -286,6 +347,8 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
               e.stopPropagation();
               setExpanded((v) => !v);
             }}
+            score={scores?.[topJob!.id]?.score}
+            reasons={scores?.[topJob!.id]?.reasons}
           />
         </div>
       </div>

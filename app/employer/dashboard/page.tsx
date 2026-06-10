@@ -224,7 +224,7 @@ export default function EmployerDashboard() {
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
               <p className="text-xs text-slate-400">Recruiter Profile</p>
-              <p className="text-sm font-semibold text-indigo-300">{employerProfile?.preferred_name || "Company"}</p>
+              <p className="text-sm font-semibold text-indigo-300">{employerProfile?.company_name || "Company"}</p>
             </div>
             <Button variant="outline" size="sm" onClick={handleLogout} className="border-white/10 hover:bg-white/10">
               Sign out
@@ -239,7 +239,7 @@ export default function EmployerDashboard() {
           <div>
             <h1 className="text-3xl font-bold">Recruiter Dashboard</h1>
             <p className="text-slate-400 mt-1">
-              Manage openings for <span className="text-indigo-400 font-medium">{employerProfile?.preferred_name}</span> and find your next hires.
+              Manage openings for <span className="text-indigo-400 font-medium">{employerProfile?.company_name}</span> and find your next hires.
             </p>
           </div>
           <Button onClick={() => router.push("/employer/jobs/new")} className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2">

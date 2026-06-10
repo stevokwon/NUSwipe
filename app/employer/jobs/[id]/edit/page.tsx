@@ -73,7 +73,8 @@ export default function EditJobPage({ params }: { params: Promise<{ id: string }
       setUser(user);
 
       // Fetch Job
-      const { data: jobData, error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: jobData, error } = await (supabase as any)
         .from("jobs")
         .select("*")
         .eq("id", id)
@@ -149,7 +150,8 @@ export default function EditJobPage({ params }: { params: Promise<{ id: string }
         tags,
       };
 
-      const { error } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
         .from("jobs")
         .update(payload)
         .eq("id", id)

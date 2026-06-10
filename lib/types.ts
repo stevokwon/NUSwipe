@@ -33,8 +33,8 @@ export interface Database {
       };
       applications: {
         Row: Application;
-        Insert: Omit<Application, "id" | "applied_at" | "updated_at"> & { id?: string };
-        Update: Partial<Pick<Application, "status" | "notes" | "ats_submission_id">> & { updated_at?: string };
+        Insert: Omit<Application, "id" | "applied_at" | "updated_at"> & { id?: string; extension_token?: string | null };
+        Update: Partial<Pick<Application, "status" | "notes" | "ats_submission_id" | "extension_token">> & { updated_at?: string };
         Relationships: [];
       };
       skipped_jobs: {
@@ -78,6 +78,9 @@ export interface Candidate {
   // Documents
   resume_url: string | null;
   linkedin_url: string | null;
+  // Sprint 3
+  skills: string[];
+  target_role: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -135,6 +138,7 @@ export interface Application {
   job_id: string;
   status: ApplicationStatus;
   ats_submission_id: string | null;
+  extension_token: string | null;
   notes: string | null;
   applied_at: string;
   updated_at: string;

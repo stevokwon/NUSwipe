@@ -5,7 +5,7 @@ import type { Profile, Job } from "@/lib/types";
 import { isProfileComplete } from "@/lib/types";
 import { checkVisaCompatibility } from "@/lib/profile";
 
-export async function POST(req: NextRequest) {
+export async function POST(req: NextRequest): Promise<NextResponse> {
   const supabase = await createClient();
 
   // Auth check
@@ -16,6 +16,8 @@ export async function POST(req: NextRequest) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const extensionToken = crypto.randomUUID();
 
   const body = await req.json();
   const { jobId } = body as { jobId?: string };
@@ -85,6 +87,7 @@ export async function POST(req: NextRequest) {
       status,
       ats_submission_id: result.kind === "redirect" ? null : result.submissionId,
       visa_warning: visaWarning !== null,
+      extension_token: extensionToken,
     };
 
     if (result.kind === "redirect") {
@@ -98,8 +101,19 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await supabase.from("applications").insert(insertPayload as any);
 
+    const p = profile as Profile;
+    const profilePayload = {
+      first_name: p.first_name ?? "",
+      last_name: p.last_name ?? "",
+      email: p.email ?? "",
+      phone: [p.phone_country_code, p.phone_number].filter(Boolean).join(""),
+      linkedin_url: p.linkedin_url ?? null,
+      resume_url: p.resume_url ?? "",
+      skills: p.skills ?? [],
+    };
+
     return NextResponse.json(
-      { success: true, submissionId: result.submissionId, visaWarning },
+      { success: true, submissionId: result.submissionId, visaWarning, extensionToken, profile: profilePayload },
       { status: 200 }
     );
   } catch (err) {

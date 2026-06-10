@@ -24,6 +24,7 @@ const baseProfile: Profile = {
   email: 'wei@example.com',
   phone_country_code: '+65',
   phone_number: '91234567',
+  role: 'candidate',
   sg_residency: 'Citizen',
   ns_status: 'Completed',
   sg_university: 'NUS',
@@ -35,6 +36,8 @@ const baseProfile: Profile = {
   grad_month_year: '2025-05',
   resume_url: 'https://storage.example.com/resume.pdf',
   linkedin_url: 'https://linkedin.com/in/weitan',
+  skills: [],
+  target_role: null,
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-01-01T00:00:00Z',
 };
