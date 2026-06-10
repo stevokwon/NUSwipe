@@ -56,10 +56,11 @@ function scoreLocation(profile: Profile, job: Job): { pts: number; reasons: stri
 function scoreVisa(profile: Profile, job: Job): { pts: number; reasons: string[] } {
   if (job.visa_sponsorship) return { pts: 10, reasons: ["Visa ok"] };
 
+  // Match the values ProfileForm stores (PascalCase display labels)
   const sgOk =
-    profile.sg_residency === "citizen" || profile.sg_residency === "pr";
+    profile.sg_residency === "Citizen" || profile.sg_residency === "Permanent Resident";
   const hkOk =
-    profile.hk_residency === "permanent_resident" || profile.hk_residency === "citizen";
+    profile.hk_residency === "Permanent Resident";
 
   if (sgOk || hkOk) return { pts: 10, reasons: ["Visa ok"] };
   return { pts: 0, reasons: [] };
@@ -67,22 +68,35 @@ function scoreVisa(profile: Profile, job: Job): { pts: number; reasons: string[]
 
 /**
  * Returns true if the profile's graduation date is within 2 years of today.
- * Expects grad_month_year in "MM/YYYY" format.
+ * Accepts "Month YYYY" format (e.g. "May 2026") — what ProfileForm stores.
+ * Falls back to "MM/YYYY" format for backward compatibility.
  */
 function isRecentGrad(gradMonthYear: string | null): boolean {
   if (!gradMonthYear) return false;
 
-  const parts = gradMonthYear.split("/");
-  if (parts.length !== 2) return false;
+  const trimmed = gradMonthYear.trim();
+  let gradDate: Date | null = null;
 
-  const month = parseInt(parts[0], 10);
-  const year = parseInt(parts[1], 10);
-  if (isNaN(month) || isNaN(year)) return false;
+  // Primary: "Month YYYY" (e.g. "May 2026") — what the ProfileForm placeholder shows
+  const textParsed = new Date(`1 ${trimmed}`);
+  if (!isNaN(textParsed.getTime())) {
+    gradDate = textParsed;
+  } else {
+    // Fallback: "MM/YYYY"
+    const parts = trimmed.split("/");
+    if (parts.length === 2) {
+      const month = parseInt(parts[0], 10);
+      const year = parseInt(parts[1], 10);
+      if (!isNaN(month) && !isNaN(year)) {
+        gradDate = new Date(year, month - 1, 1);
+      }
+    }
+  }
 
-  const gradDate = new Date(year, month - 1, 1);
+  if (!gradDate) return false;
+
   const today = new Date();
   const twoYearsAgo = new Date(today.getFullYear() - 2, today.getMonth(), today.getDate());
-
   return gradDate >= twoYearsAgo;
 }
 

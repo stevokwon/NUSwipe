@@ -26,6 +26,25 @@ interface SubmitResult {
 // Map from background tabId → { nuswTabId, nuswOrigin, extensionToken, jobId }
 const pendingTabs = new Map<number, { nuswTabId: number; nuswOrigin: string; extensionToken: string; jobId: string }>();
 
+// When the ATS tab finishes loading, retrieve the stored payload and send NUSW_FILL
+// so the content script knows to start filling the form.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status !== "complete") return;
+  if (!pendingTabs.has(tabId)) return;
+
+  chrome.storage.session.get(`payload_${tabId}`, (result) => {
+    const payload = result[`payload_${tabId}`] as SubmitPayload | undefined;
+    if (!payload) return;
+
+    chrome.tabs.sendMessage(tabId, {
+      type: "NUSW_FILL",
+      payload: payload.profile,
+      jobId: payload.jobId,
+      extensionToken: payload.extensionToken,
+    });
+  });
+});
+
 chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
   const msg = message as Record<string, unknown>;
 
@@ -48,7 +67,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
           extensionToken: payload.extensionToken,
           jobId: payload.jobId,
         });
-        // Store payload for the content script to retrieve
+        // Store payload keyed by tab id so the onUpdated handler can retrieve it
         chrome.storage.session.set({ [`payload_${tab.id}`]: payload });
       });
 

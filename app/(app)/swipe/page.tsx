@@ -7,6 +7,9 @@ import type { Profile, Job } from "@/lib/types";
 import { isProfileComplete } from "@/lib/types";
 import { scoreJob } from "@/lib/scoring/rule-based";
 import type { ScoreResult } from "@/lib/scoring/rule-based";
+// NOTE: scores is passed as a prop to a Client Component, so it must be a
+// plain Record (JSON-serializable), not a Map.
+type ScoreMap = Record<string, ScoreResult>;
 
 export default async function SwipePage() {
   const supabase = await createClient();
@@ -61,10 +64,10 @@ export default async function SwipePage() {
 
   const unseenJobs = ((jobs ?? []) as Job[]).filter((j) => !seenIds.has(j.id));
 
-  const scores = new Map<string, ScoreResult>();
+  const scores: ScoreMap = {};
   if (profile) {
     for (const job of unseenJobs) {
-      scores.set(job.id, scoreJob(profile as Profile, job));
+      scores[job.id] = scoreJob(profile as Profile, job);
     }
   }
 

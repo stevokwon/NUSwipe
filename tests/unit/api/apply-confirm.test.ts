@@ -1,19 +1,8 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-const {
-  mockUpdate,
-  mockEqUpdate,
-  mockSingle,
-  mockEqSelect,
-  mockSelect,
-  mockFrom,
-} = vi.hoisted(() => ({
-  mockUpdate: vi.fn(),
-  mockEqUpdate: vi.fn(),
+const { mockSingle, mockFrom } = vi.hoisted(() => ({
   mockSingle: vi.fn(),
-  mockEqSelect: vi.fn(),
-  mockSelect: vi.fn(),
   mockFrom: vi.fn(),
 }));
 
@@ -34,41 +23,42 @@ function makeReq(body: unknown): NextRequest {
   });
 }
 
+// The confirm route now does one atomic query:
+// .update({...}).eq("extension_token", token).select("id").single()
+function mockChain(resolvedValue: unknown) {
+  const chain = {
+    update: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    single: vi.fn().mockResolvedValue(resolvedValue),
+  };
+  mockFrom.mockReturnValue(chain);
+  return chain;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
-  mockFrom.mockReturnValue({ select: mockSelect, update: mockUpdate });
-  mockSelect.mockReturnValue({ eq: mockEqSelect });
-  mockEqSelect.mockReturnValue({ single: mockSingle });
-  mockUpdate.mockReturnValue({ eq: mockEqUpdate });
-  mockEqUpdate.mockResolvedValue({ error: null });
 });
 
 describe("POST /api/apply/confirm", () => {
   it("valid token → 200, success", async () => {
-    mockSingle.mockResolvedValue({
-      data: { id: "app-1", status: "pending", extension_token: "tok-123" },
-      error: null,
-    });
+    mockChain({ data: { id: "app-1" }, error: null });
 
     const res = await POST(makeReq({ extensionToken: "tok-123" }));
     const body = await res.json();
 
     expect(res.status).toBe(200);
     expect(body).toEqual({ success: true });
-    expect(mockEqUpdate).toHaveBeenCalled();
   });
 
   it("invalid token (not found) → 404", async () => {
-    mockSingle.mockResolvedValue({
-      data: null,
-      error: { message: "not found" },
-    });
+    mockChain({ data: null, error: { message: "not found" } });
 
     const res = await POST(makeReq({ extensionToken: "no-such-token" }));
     const body = await res.json();
 
     expect(res.status).toBe(404);
-    expect(body.error).toBe("Not found");
+    expect(body.error).toBe("Not found or already used");
   });
 
   it("missing extensionToken in body → 400", async () => {

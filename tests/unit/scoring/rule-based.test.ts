@@ -63,8 +63,8 @@ describe("scoreJob", () => {
       skills: ["React", "TypeScript", "Node.js", "Python"],
       target_role: "Software Engineering",
       sg_university: "NUS",
-      sg_residency: "citizen",
-      grad_month_year: "06/2026", // recent grad
+      sg_residency: "Citizen",
+      grad_month_year: "May 2026", // recent grad
     });
     const job = makeJob({
       tags: ["React", "TypeScript", "Node.js", "Python", "internship"],
@@ -91,7 +91,7 @@ describe("scoreJob", () => {
       hk_university: null,
       sg_residency: null,
       hk_residency: null,
-      grad_month_year: "06/2018",
+      grad_month_year: "Jun 2018",
     });
     const job = makeJob({
       tags: ["Java", "Scala"],
@@ -114,7 +114,7 @@ describe("scoreJob", () => {
       hk_university: null,
       sg_residency: null,
       hk_residency: null,
-      grad_month_year: "06/2018",
+      grad_month_year: "Jun 2018",
     });
     const job = makeJob({
       tags: ["React", "Vue"],
@@ -137,7 +137,7 @@ describe("scoreJob", () => {
       hk_university: null,
       sg_residency: null,
       hk_residency: null,
-      grad_month_year: "06/2018",
+      grad_month_year: "Jun 2018",
     });
     const job = makeJob({
       tags: ["React", "TypeScript", "Node.js", "Python", "Go", "Rust"],
@@ -160,7 +160,7 @@ describe("scoreJob", () => {
       hk_university: "HKU",
       sg_residency: null,
       hk_residency: null,
-      grad_month_year: "06/2018",
+      grad_month_year: "Jun 2018",
     });
     const job = makeJob({
       tags: [],
@@ -174,15 +174,15 @@ describe("scoreJob", () => {
     expect(result.reasons).toContain("Local role");
   });
 
-  it("visa: citizen bypasses sponsorship — sg_residency='citizen', visa_sponsorship=false → still +10", () => {
+  it("visa: citizen bypasses sponsorship — sg_residency='Citizen', visa_sponsorship=false → still +10", () => {
     const profile = makeProfile({
       skills: [],
       target_role: null,
       sg_university: null,
       hk_university: null,
-      sg_residency: "citizen",
+      sg_residency: "Citizen",
       hk_residency: null,
-      grad_month_year: "06/2018",
+      grad_month_year: "Jun 2018",
     });
     const job = makeJob({
       tags: [],
@@ -196,7 +196,7 @@ describe("scoreJob", () => {
     expect(result.reasons).toContain("Visa ok");
   });
 
-  it("seniority: far grad year — grad_month_year='06/2020' (past, >2 yrs) → 0 seniority pts", () => {
+  it("seniority: far grad year — grad_month_year='Jun 2020' (past, >2 yrs) → 0 seniority pts", () => {
     const profile = makeProfile({
       skills: [],
       target_role: null,
@@ -204,7 +204,7 @@ describe("scoreJob", () => {
       hk_university: null,
       sg_residency: null,
       hk_residency: null,
-      grad_month_year: "06/2020",
+      grad_month_year: "Jun 2020",
     });
     const job = makeJob({
       tags: ["internship"],

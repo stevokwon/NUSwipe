@@ -14,25 +14,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // the authentication mechanism — RLS cannot be applied here.
   const supabase = createServiceRoleClient();
 
-  // Find the application by extension_token
-  const { data: application, error: findError } = await supabase
-    .from("applications")
-    .select("id, status, extension_token")
-    .eq("extension_token", extensionToken)
-    .single<{ id: string; status: string; extension_token: string }>();
-
-  if (findError || !application) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  // Flip status to "applied" and null out the token (one-time use)
+  // Atomic: update WHERE extension_token = token, then null it out (one-time use).
+  // Matching by token in the predicate prevents a race where two concurrent requests
+  // both succeed — only the first will find a non-null token to match.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: updateError } = await (supabase.from("applications") as any)
+  const { data: updated, error: updateError } = await (supabase.from("applications") as any)
     .update({ status: "applied", extension_token: null, updated_at: new Date().toISOString() })
-    .eq("id", application.id);
+    .eq("extension_token", extensionToken)
+    .select("id")
+    .single();
 
-  if (updateError) {
-    return NextResponse.json({ error: "Update failed" }, { status: 500 });
+  if (updateError || !updated) {
+    return NextResponse.json({ error: "Not found or already used" }, { status: 404 });
   }
 
   return NextResponse.json({ success: true });

@@ -12,7 +12,7 @@ const FILTERS = ["All Roles", "Internships", "Full-time", "SG Only", "Visa ✓"]
 interface Props {
   initialJobs: Job[];
   isLoading?: boolean;
-  scores?: Map<string, ScoreResult>;
+  scores?: Record<string, ScoreResult>;
 }
 
 export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
@@ -141,7 +141,14 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
         return;
       }
 
-      if (res.ok && data.extensionToken) {
+      // URL-fallback job: open the external form in a new tab so the user can
+      // complete it manually. The application row is already created as 'pending'.
+      if (data.redirect) {
+        window.open(data.redirect as string, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      if (data.extensionToken) {
         window.postMessage(
           {
             type: "NUSW_SUBMIT",
@@ -340,8 +347,8 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
               e.stopPropagation();
               setExpanded((v) => !v);
             }}
-            score={scores?.get(topJob!.id)?.score}
-            reasons={scores?.get(topJob!.id)?.reasons}
+            score={scores?.[topJob!.id]?.score}
+            reasons={scores?.[topJob!.id]?.reasons}
           />
         </div>
       </div>

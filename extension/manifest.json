@@ -21,6 +21,14 @@
     {
       "matches": ["http://localhost:3000/*", "https://*.nuswipe.com/*"],
       "js": ["content-nusw.js"]
+    },
+    {
+      "matches": ["https://boards.greenhouse.io/*"],
+      "js": ["content-greenhouse.js"]
+    },
+    {
+      "matches": ["https://jobs.lever.co/*"],
+      "js": ["content-lever.js"]
     }
   ]
 }
