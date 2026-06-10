@@ -68,14 +68,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Legal gate — block incompatible visa/residency before any ATS call
+  // Visa compatibility check — warn but do not block.
+  // International students can still apply to roles without sponsorship;
+  // the flag is stored on the application for candidate awareness.
   const compatibility = checkVisaCompatibility(profile as Profile, job as Job);
-  if (!compatibility.compatible) {
-    return NextResponse.json(
-      { error: compatibility.reason, field: compatibility.field },
-      { status: 422 }
-    );
-  }
+  const visaWarning = !compatibility.compatible ? compatibility.reason : null;
 
   // Submit to ATS
   try {
@@ -87,13 +84,14 @@ export async function POST(req: NextRequest) {
       job_id: jobId,
       status,
       ats_submission_id: result.kind === "redirect" ? null : result.submissionId,
+      visa_warning: visaWarning !== null,
     };
 
     if (result.kind === "redirect") {
       // Record as 'pending' — submission unconfirmed until user completes external form
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await supabase.from("applications").insert(insertPayload as any);
-      return NextResponse.json({ redirect: result.url }, { status: 200 });
+      return NextResponse.json({ redirect: result.url, visaWarning }, { status: 200 });
     }
 
     // Direct ATS submission succeeded — record as 'applied'
@@ -101,7 +99,7 @@ export async function POST(req: NextRequest) {
     await supabase.from("applications").insert(insertPayload as any);
 
     return NextResponse.json(
-      { success: true, submissionId: result.submissionId },
+      { success: true, submissionId: result.submissionId, visaWarning },
       { status: 200 }
     );
   } catch (err) {
