@@ -99,6 +99,11 @@ export default function LoginPage() {
               Sign up free
             </Link>
           </p>
+          <div className="border-t border-white/10 mt-6 pt-4 text-center">
+            <Link href="/employer/login" className="text-xs text-slate-400 hover:text-white">
+              Are you an Employer? Go to Employer Portal →
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
