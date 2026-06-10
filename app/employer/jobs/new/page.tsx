@@ -73,7 +73,8 @@ export default function NewJobPage() {
       }
       setUser(user);
 
-      const { data: employer } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: employer } = await (supabase as any)
         .from("employers")
         .select("*")
         .eq("id", user.id)

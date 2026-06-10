@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
 
       // Create or update the user row in the correct table now that we are authenticated
       if (role === 'employer') {
-        await supabase.from("employers").upsert({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from("employers").upsert({
           id: data.user.id,
           email: data.user.email,
           company_name: metadata.company_name || "",
@@ -38,7 +39,8 @@ export async function GET(request: NextRequest) {
         await supabase.auth.signOut()
         redirectTo.pathname = '/employer/login'
       } else {
-        await supabase.from("candidates").upsert({ 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from("candidates").upsert({ 
           id: data.user.id, 
           email: data.user.email
         })
@@ -58,7 +60,8 @@ export async function GET(request: NextRequest) {
       const role = metadata.role || 'candidate'
 
       if (role === 'employer') {
-        await supabase.from("employers").upsert({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from("employers").upsert({
           id: data.user.id,
           email: data.user.email,
           company_name: metadata.company_name || "",
@@ -68,7 +71,8 @@ export async function GET(request: NextRequest) {
         await supabase.auth.signOut()
         redirectTo.pathname = '/employer/login'
       } else {
-        await supabase.from("candidates").upsert({ 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (supabase as any).from("candidates").upsert({ 
           id: data.user.id, 
           email: data.user.email
         })
