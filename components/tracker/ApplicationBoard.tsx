@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { ApplicationWithJob, ApplicationStatus } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 
 const COLUMNS: { status: ApplicationStatus; label: string; icon: string; color: string }[] = [
   { status: "pending", label: "Pending", icon: "⏳", color: "border-orange-500/40 bg-orange-950/20" },
@@ -137,10 +138,12 @@ function ApplicationCard({
 
   return (
     <div className="flex items-start gap-4 rounded-xl border border-white/10 bg-white/5 p-4 hover:bg-white/8 transition-colors">
-      {/* Company initial */}
-      <div className="shrink-0 w-10 h-10 rounded-lg bg-purple-900/50 flex items-center justify-center text-sm font-bold text-purple-300">
-        {job?.company?.charAt(0) ?? "?"}
-      </div>
+      {/* Company logo */}
+      <CompanyLogo 
+        company={job?.company ?? "Unknown"} 
+        logoUrl={job?.logo_url} 
+        className="w-12 h-12" 
+      />
 
       {/* Details */}
       <div className="flex-1 min-w-0">
