@@ -178,7 +178,7 @@ function setupSupabase(opts: {
       reject:  (e: unknown) => void
     ) => Promise.resolve({ data: applicationsRows, error: null }).then(resolve, reject);
 
-    if (table === "profiles") {
+    if (table === "candidates") {
       (chain.single as ReturnType<typeof vi.fn>).mockResolvedValue({
         data: profile,
         error: null,

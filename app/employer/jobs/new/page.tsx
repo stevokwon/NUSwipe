@@ -73,17 +73,17 @@ export default function NewJobPage() {
       }
       setUser(user);
 
-      const { data: profile } = await supabase
-        .from("profiles")
+      const { data: employer } = await supabase
+        .from("employers")
         .select("*")
         .eq("id", user.id)
         .single();
 
-      if (profile) {
-        setEmployerProfile(profile as Profile);
+      if (employer) {
+        setEmployerProfile(employer as unknown as Profile);
         setFormData(prev => ({
           ...prev,
-          company: profile.preferred_name || ""
+          company: employer.company_name || ""
         }));
       }
       setLoading(false);

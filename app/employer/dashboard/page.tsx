@@ -3,7 +3,7 @@
 import { useEffect, useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Job, Profile, Application, AtsType } from "@/lib/types";
+import type { Job, Profile, Application, AtsType, Employer, Candidate } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,7 @@ import { Briefcase, Users, FileText, CheckCircle, Clock, ExternalLink, Plus, Tra
 
 interface ApplicationWithCandidate extends Application {
   jobs: Job;
-  profiles: Profile;
+  candidates: Candidate;
 }
 
 export default function EmployerDashboard() {
@@ -25,7 +25,7 @@ export default function EmployerDashboard() {
 
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
-  const [employerProfile, setEmployerProfile] = useState<Profile | null>(null);
+  const [employerProfile, setEmployerProfile] = useState<Employer | null>(null);
 
   // Core Data State
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -61,7 +61,7 @@ export default function EmployerDashboard() {
         toast.error("Employer profile not found.");
         return;
       } else {
-        setEmployerProfile(employerData as unknown as Profile);
+        setEmployerProfile(employerData as unknown as Employer);
       }
 
       // Fetch employer's jobs
@@ -84,7 +84,7 @@ export default function EmployerDashboard() {
         .select(`
           *,
           jobs:job_id!inner(*),
-          profiles:user_id(*)
+          candidates:user_id(*)
         `)
         .eq("jobs.posted_by", user.id);
 
@@ -457,7 +457,7 @@ export default function EmployerDashboard() {
             ) : (
               <div className="space-y-4">
                 {filteredApps.map((app) => {
-                  const candidate = app.profiles;
+                  const candidate = app.candidates;
                   const candidateName = `${candidate.first_name || ""} ${candidate.last_name || ""}`.trim() || candidate.email || "Graduate Profile";
                   const gpaText = candidate.gpa ? `GPA: ${candidate.gpa}` : "GPA: N/A";
                   const university = candidate.sg_university || candidate.hk_university || "APAC Graduate";

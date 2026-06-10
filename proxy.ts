@@ -58,7 +58,10 @@ export async function proxy(request: NextRequest) {
       }
     } else {
       // Assume candidate
-      if (isEmployerRoute || pathname === "/login" || pathname === "/signup" || pathname === "/employer/login" || pathname === "/employer/signup") {
+      // We should NOT redirect candidates if they are trying to log in/signup to the employer portal
+      const isEmployerAuthRoute = pathname === "/employer/login" || pathname === "/employer/signup";
+      
+      if ((isEmployerRoute || pathname === "/login" || pathname === "/signup") && !isEmployerAuthRoute) {
         if (pathname !== "/swipe") {
           return NextResponse.redirect(new URL("/swipe", request.url));
         }

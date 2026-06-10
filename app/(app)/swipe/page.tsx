@@ -16,7 +16,7 @@ export default async function SwipePage() {
 
   // Check profile completeness
   const { data: profile } = await supabase
-    .from("profiles")
+    .from("candidates")
     .select("*")
     .eq("id", user.id)
     .single();

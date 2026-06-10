@@ -13,10 +13,16 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      profiles: {
-        Row: Profile;
-        Insert: Partial<Omit<Profile, "id">> & { id: string };
-        Update: Partial<Omit<Profile, "id">>;
+      candidates: {
+        Row: Candidate;
+        Insert: Partial<Omit<Candidate, "id" | "created_at">> & { id: string; email: string };
+        Update: Partial<Candidate>;
+        Relationships: [];
+      };
+      employers: {
+        Row: Employer;
+        Insert: Omit<Employer, "created_at" | "updated_at">;
+        Update: Partial<Employer>;
         Relationships: [];
       };
       jobs: {
@@ -49,7 +55,7 @@ export interface Database {
 // Application-layer types
 // ============================================================
 
-export interface Profile {
+export interface Candidate {
   id: string;
   first_name: string | null;
   last_name: string | null;
@@ -57,7 +63,6 @@ export interface Profile {
   email: string | null;
   phone_country_code: string | null;
   phone_number: string | null;
-  role: "candidate" | "employer";
   // Singapore
   sg_residency: string | null;
   ns_status: string | null;
@@ -73,6 +78,17 @@ export interface Profile {
   // Documents
   resume_url: string | null;
   linkedin_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type Profile = Candidate; // Alias for backward compatibility while refactoring
+
+export interface Employer {
+  id: string;
+  company_name: string;
+  contact_name: string | null;
+  email: string | null;
   created_at: string;
   updated_at: string;
 }

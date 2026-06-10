@@ -103,7 +103,7 @@ function setupSuccessPath(
       insert: mockInsert,
     };
 
-    if (table === "profiles") {
+    if (table === "candidates") {
       chain.single.mockResolvedValue({ data: profile, error: null });
     } else if (table === "jobs") {
       chain.single.mockResolvedValue({ data: job, error: null });

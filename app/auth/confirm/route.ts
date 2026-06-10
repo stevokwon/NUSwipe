@@ -26,25 +26,21 @@ export async function GET(request: NextRequest) {
       const metadata = data.user.user_metadata
       const role = metadata.role || 'candidate'
 
-      // Create or update the profile row now that we are authenticated
+      // Create or update the user row in the correct table now that we are authenticated
       if (role === 'employer') {
-        const nameParts = (metadata.contact_name || "").split(" ")
-        await supabase.from("profiles").upsert({
+        await supabase.from("employers").upsert({
           id: data.user.id,
           email: data.user.email,
-          role: "employer",
-          first_name: nameParts[0] || "",
-          last_name: nameParts.slice(1).join(" ") || "",
-          preferred_name: metadata.company_name || "",
+          company_name: metadata.company_name || "",
+          contact_name: metadata.contact_name || "",
         })
         
         await supabase.auth.signOut()
         redirectTo.pathname = '/employer/login'
       } else {
-        await supabase.from("profiles").upsert({ 
+        await supabase.from("candidates").upsert({ 
           id: data.user.id, 
-          email: data.user.email,
-          role: "candidate"
+          email: data.user.email
         })
         
         await supabase.auth.signOut()
@@ -62,23 +58,19 @@ export async function GET(request: NextRequest) {
       const role = metadata.role || 'candidate'
 
       if (role === 'employer') {
-        const nameParts = (metadata.contact_name || "").split(" ")
-        await supabase.from("profiles").upsert({
+        await supabase.from("employers").upsert({
           id: data.user.id,
           email: data.user.email,
-          role: "employer",
-          first_name: nameParts[0] || "",
-          last_name: nameParts.slice(1).join(" ") || "",
-          preferred_name: metadata.company_name || "",
+          company_name: metadata.company_name || "",
+          contact_name: metadata.contact_name || "",
         })
         
         await supabase.auth.signOut()
         redirectTo.pathname = '/employer/login'
       } else {
-        await supabase.from("profiles").upsert({ 
+        await supabase.from("candidates").upsert({ 
           id: data.user.id, 
-          email: data.user.email,
-          role: "candidate"
+          email: data.user.email
         })
         
         await supabase.auth.signOut()
