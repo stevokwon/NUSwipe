@@ -68,9 +68,20 @@ describe("JobCard", () => {
     expect(el.textContent).toBe("GS");
   });
 
-  it("renders a match score", () => {
+  it("renders a match score badge when score prop is provided", () => {
+    render(<JobCard job={baseJob} score={85} reasons={[]} />);
+    expect(screen.getByText("85%")).not.toBeNull();
+    expect(screen.getByText("match")).not.toBeNull();
+  });
+
+  it("hides match score badge when no score prop is passed", () => {
     render(<JobCard job={baseJob} />);
-    // The match score badge should be visible
-    expect(screen.getByText(/match/i)).not.toBeNull();
+    expect(screen.queryByText(/match/i)).toBeNull();
+  });
+
+  it("renders reasoning chips when reasons are provided", () => {
+    render(<JobCard job={baseJob} score={70} reasons={["Skills match", "Visa ok"]} />);
+    expect(screen.getByText("Skills match")).not.toBeNull();
+    expect(screen.getByText("Visa ok")).not.toBeNull();
   });
 });
