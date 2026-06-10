@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -47,10 +47,43 @@ export function ProfileForm({ profile, userId }: Props) {
     grad_month_year: profile.grad_month_year ?? "",
     linkedin_url: profile.linkedin_url ?? "",
     resume_url: profile.resume_url ?? "",
+    target_role: profile.target_role ?? "",
   });
+
+  const [skills, setSkills] = useState<string[]>(profile.skills ?? []);
+  const [skillInput, setSkillInput] = useState("");
 
   function update(key: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function addSkillsFromInput(raw: string) {
+    const tokens = raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    if (tokens.length === 0) return;
+    setSkills((prev) => {
+      const next = [...prev];
+      for (const t of tokens) {
+        if (!next.includes(t)) next.push(t);
+      }
+      return next;
+    });
+    setSkillInput("");
+  }
+
+  function handleSkillKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addSkillsFromInput(skillInput);
+    } else if (e.key === "Backspace" && skillInput === "" && skills.length > 0) {
+      setSkills((prev) => prev.slice(0, -1));
+    }
+  }
+
+  function removeSkill(skill: string) {
+    setSkills((prev) => prev.filter((s) => s !== skill));
   }
 
   // ── Resume upload ──────────────────────────────────────────────────────────
@@ -95,7 +128,7 @@ export function ProfileForm({ profile, userId }: Props) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
       .from("candidates")
-      .update({ ...form, updated_at: new Date().toISOString() })
+      .update({ ...form, skills, updated_at: new Date().toISOString() })
       .eq("id", userId);
 
     if (error) {
@@ -108,8 +141,8 @@ export function ProfileForm({ profile, userId }: Props) {
     setSaving(false);
 
     // If profile is now complete, navigate to swipe
-    const updated = { ...profile, ...form };
-    if (isProfileComplete(updated as Profile)) {
+    const updated: Profile = { ...profile, ...form, skills };
+    if (isProfileComplete(updated)) {
       router.push("/swipe");
     }
   }
@@ -339,6 +372,51 @@ export function ProfileForm({ profile, userId }: Props) {
               />
             </Field>
           </Row>
+          <Field label="Target Role">
+            <Input
+              value={form.target_role}
+              onChange={(e) => update("target_role", e.target.value)}
+              placeholder="e.g. Software Engineer"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Skills">
+            <div
+              className={`flex flex-wrap gap-1.5 min-h-[42px] rounded-md border px-3 py-2 text-sm cursor-text bg-white/10 border-white/20 focus-within:border-purple-500`}
+              onClick={() => {
+                const el = document.getElementById("skills-input");
+                el?.focus();
+              }}
+            >
+              {skills.map((skill) => (
+                <span
+                  key={skill}
+                  className="inline-flex items-center gap-1 rounded-full bg-purple-600/30 border border-purple-500/40 px-2 py-0.5 text-xs text-purple-200"
+                >
+                  {skill}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); removeSkill(skill); }}
+                    className="text-purple-300 hover:text-white leading-none"
+                    aria-label={`Remove ${skill}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              <input
+                id="skills-input"
+                type="text"
+                value={skillInput}
+                onChange={(e) => setSkillInput(e.target.value)}
+                onKeyDown={handleSkillKeyDown}
+                onBlur={() => addSkillsFromInput(skillInput)}
+                placeholder={skills.length === 0 ? "e.g. React, Python, SQL" : ""}
+                className="flex-1 min-w-[120px] bg-transparent text-white placeholder:text-slate-500 outline-none text-sm"
+              />
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Type a skill and press Enter or comma to add it.</p>
+          </Field>
         </fieldset>
       )}
 

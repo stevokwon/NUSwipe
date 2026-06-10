@@ -20,6 +20,7 @@ const baseProfile: Profile = {
   email: 'test@example.com',
   phone_country_code: null,
   phone_number: null,
+  role: 'candidate',
   sg_residency: null,
   ns_status: null,
   sg_university: null,
@@ -31,6 +32,8 @@ const baseProfile: Profile = {
   grad_month_year: '2025-05',
   resume_url: null,
   linkedin_url: null,
+  skills: [],
+  target_role: null,
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-01-01T00:00:00Z',
 };

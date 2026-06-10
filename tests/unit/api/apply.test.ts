@@ -42,6 +42,7 @@ const completeProfile: Profile = {
   email: "jane@example.com",
   phone_country_code: "+65",
   phone_number: "91234567",
+  role: "candidate",
   sg_residency: "Citizen",
   ns_status: "Completed",
   sg_university: "NUS",
@@ -53,6 +54,8 @@ const completeProfile: Profile = {
   grad_month_year: "May 2026",
   resume_url: "https://storage.example.com/resume.pdf",
   linkedin_url: null,
+  skills: [],
+  target_role: null,
   created_at: "2025-01-01T00:00:00Z",
   updated_at: "2025-01-01T00:00:00Z",
 };
