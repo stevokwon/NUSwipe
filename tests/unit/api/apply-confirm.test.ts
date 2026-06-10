@@ -18,7 +18,7 @@ const {
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn().mockResolvedValue({
+  createServiceRoleClient: vi.fn().mockReturnValue({
     from: mockFrom,
   }),
 }));

@@ -148,7 +148,7 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
             jobUrl: job.ats_fallback_url ?? "",
             jobId: job.id,
             extensionToken: data.extensionToken as string,
-            profile: data.profile,   // backend doesn't return profile yet — undefined for now
+            profile: data.profile,
           },
           "*"
         );

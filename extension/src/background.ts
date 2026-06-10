@@ -1,7 +1,5 @@
 // Background service worker — orchestrates tab management + ATS submission flow
 
-const NUSW_ORIGIN = "http://localhost:3000"; // overridden in production by env
-
 interface SubmitPayload {
   type: "NUSW_SUBMIT";
   jobUrl: string;
@@ -25,8 +23,8 @@ interface SubmitResult {
   extensionToken: string;
 }
 
-// Map from background tabId → { nuswTabId, extensionToken, jobId }
-const pendingTabs = new Map<number, { nuswTabId: number; extensionToken: string; jobId: string }>();
+// Map from background tabId → { nuswTabId, nuswOrigin, extensionToken, jobId }
+const pendingTabs = new Map<number, { nuswTabId: number; nuswOrigin: string; extensionToken: string; jobId: string }>();
 
 chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
   const msg = message as Record<string, unknown>;
@@ -36,12 +34,17 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
     const nuswTabId = sender.tab?.id;
     if (!nuswTabId) return;
 
+    // Derive the confirm URL from the sender's origin so this works on both
+    // localhost and the production domain without a build-time env var.
+    const nuswOrigin = sender.origin ?? sender.url?.replace(/\/[^/]*$/, "") ?? "";
+
     chrome.tabs
       .create({ url: payload.jobUrl, active: false })
       .then((tab) => {
         if (!tab.id) return;
         pendingTabs.set(tab.id, {
           nuswTabId,
+          nuswOrigin,
           extensionToken: payload.extensionToken,
           jobId: payload.jobId,
         });
@@ -64,7 +67,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
     pendingTabs.delete(bgTabId);
 
     if (result.success) {
-      fetch(`${NUSW_ORIGIN}/api/apply/confirm`, {
+      fetch(`${pending.nuswOrigin}/api/apply/confirm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ extensionToken: pending.extensionToken }),

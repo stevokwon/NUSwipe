@@ -13,7 +13,6 @@ function makeProfile(overrides: Partial<Profile> = {}): Profile {
     email: "alice@example.com",
     phone_country_code: null,
     phone_number: null,
-    role: "candidate",
     sg_residency: null,
     ns_status: null,
     sg_university: null,

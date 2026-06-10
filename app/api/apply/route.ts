@@ -101,8 +101,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await supabase.from("applications").insert(insertPayload as any);
 
+    const p = profile as Profile;
+    const profilePayload = {
+      first_name: p.first_name ?? "",
+      last_name: p.last_name ?? "",
+      email: p.email ?? "",
+      phone: [p.phone_country_code, p.phone_number].filter(Boolean).join(""),
+      linkedin_url: p.linkedin_url ?? null,
+      resume_url: p.resume_url ?? "",
+      skills: p.skills ?? [],
+    };
+
     return NextResponse.json(
-      { success: true, submissionId: result.submissionId, visaWarning, extensionToken },
+      { success: true, submissionId: result.submissionId, visaWarning, extensionToken, profile: profilePayload },
       { status: 200 }
     );
   } catch (err) {
