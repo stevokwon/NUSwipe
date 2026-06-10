@@ -73,6 +73,9 @@ export interface Profile {
   // Documents
   resume_url: string | null;
   linkedin_url: string | null;
+  // Sprint 3
+  skills: string[];
+  target_role: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -120,6 +123,7 @@ export interface Application {
   status: ApplicationStatus;
   ats_submission_id: string | null;
   notes: string | null;
+  extension_token: string | null;
   applied_at: string;
   updated_at: string;
 }
