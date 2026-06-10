@@ -19,8 +19,18 @@ export async function applyToJob(
       return { kind: "submitted", submissionId };
     }
     case "lever": {
-      const submissionId = await submitToLever(profile, job);
-      return { kind: "submitted", submissionId };
+      try {
+        const submissionId = await submitToLever(profile, job);
+        return { kind: "submitted", submissionId };
+      } catch {
+        // Lever's direct apply endpoint is Cloudflare-protected and often rejects
+        // server-side POSTs. Fall back to the hosted URL so the candidate can
+        // complete the application manually.
+        if (job.ats_fallback_url) {
+          return { kind: "redirect", url: job.ats_fallback_url };
+        }
+        throw new Error("Lever submission failed and no fallback URL is available.");
+      }
     }
     case "url":
       return submitToFallback(job);
