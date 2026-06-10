@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import type { Job } from "@/lib/types";
-import { resolveApplyToast } from "@/lib/swipe/apply-toast";
 import { JobCard } from "./JobCard";
 
 const SWIPE_THRESHOLD = 100;
@@ -73,11 +72,10 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
 
     if (dir === "right") {
       setAppliedCount((c) => c + 1);
-      const outcome = await submitApplication(job);
-      if (outcome === "direct") {
-        setShowMatch(true);
-        setTimeout(() => setShowMatch(false), 1800);
-      }
+      toast.success(`Applied to ${job.company} ✓`);   // optimistic, immediate
+      setShowMatch(true);
+      setTimeout(() => setShowMatch(false), 1800);
+      submitApplication(job);                          // fire-and-forget (no await)
     } else {
       await recordSkip(job);
     }
@@ -86,7 +84,7 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
   // Keep triggerRef current every render
   triggerRef.current = triggerSwipe;
 
-  async function submitApplication(job: Job): Promise<"direct" | "redirect" | "error"> {
+  async function submitApplication(job: Job): Promise<void> {
     setSubmitting(true);
     try {
       const res  = await fetch("/api/apply", {
@@ -98,22 +96,25 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
 
       if (!res.ok) {
         toast.error(data.error ?? "Application failed");
-        return "error";
+        return;
       }
 
-      const spec = resolveApplyToast(data, job.company);
-      if (spec.outcome === "redirect") {
-        window.open(data.redirect, "_blank", "noopener");
+      if (res.ok && data.extensionToken) {
+        window.postMessage(
+          {
+            type: "NUSW_SUBMIT",
+            jobUrl: job.ats_fallback_url ?? "",
+            jobId: job.id,
+            extensionToken: data.extensionToken as string,
+            profile: data.profile,   // backend doesn't return profile yet — undefined for now
+          },
+          "*"
+        );
       }
-      if (spec.variant === "success") {
-        toast.success(spec.message);
-      } else {
-        toast.info(spec.message);
-      }
+
       if (data.visaWarning) {
         toast.warning(data.visaWarning);
       }
-      return spec.outcome;
     } finally {
       setSubmitting(false);
     }
