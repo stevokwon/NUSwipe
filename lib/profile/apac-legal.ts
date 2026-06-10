@@ -40,7 +40,7 @@ export function checkVisaCompatibility(
   if (profile.sg_residency !== null && SG_SPONSORSHIP_REQUIRED.has(profile.sg_residency)) {
     logger.warn(
       { field: 'sg_residency' },
-      'Visa incompatibility: SG residency requires sponsorship — submission blocked',
+      'Visa incompatibility: SG residency requires sponsorship — proceeding with warning',
     );
     return {
       compatible: false,
@@ -52,7 +52,7 @@ export function checkVisaCompatibility(
   if (profile.hk_residency !== null && HK_SPONSORSHIP_REQUIRED.has(profile.hk_residency)) {
     logger.warn(
       { field: 'hk_residency' },
-      'Visa incompatibility: HK residency requires sponsorship — submission blocked',
+      'Visa incompatibility: HK residency requires sponsorship — proceeding with warning',
     );
     return {
       compatible: false,

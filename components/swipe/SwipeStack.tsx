@@ -110,6 +110,9 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
       } else {
         toast.info(spec.message);
       }
+      if (data.visaWarning) {
+        toast.warning(data.visaWarning);
+      }
       return spec.outcome;
     } finally {
       setSubmitting(false);

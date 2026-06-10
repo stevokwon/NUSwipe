@@ -127,8 +127,8 @@ beforeEach(() => {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe("POST /api/apply — legal gate (A4)", () => {
-  it("returns 422 with reason and field when SG profile is incompatible", async () => {
+describe("POST /api/apply — visa warning (A4)", () => {
+  it("proceeds with 200 and visaWarning when SG profile has no sponsorship", async () => {
     setupSuccessPath(
       { sg_residency: "Employment Pass Required" },
       { visa_sponsorship: false }
@@ -143,14 +143,14 @@ describe("POST /api/apply — legal gate (A4)", () => {
     const res = await POST(makeRequest());
     const body = await res.json();
 
-    expect(res.status).toBe(422);
-    expect(body.field).toBe("sg_residency");
-    expect(body.error).toBeTruthy();
+    // Application proceeds — visa incompatibility is a warning, not a block
+    expect(res.status).toBe(200);
+    expect(body.visaWarning).toBeTruthy();
     // Privacy: response must NOT expose the actual field value
     expect(JSON.stringify(body)).not.toContain("Employment Pass Required");
   });
 
-  it("returns 422 with field when HK profile is incompatible", async () => {
+  it("proceeds with 200 and visaWarning when HK profile has no sponsorship", async () => {
     setupSuccessPath(
       { hk_residency: "Visa Required", sg_residency: null },
       { visa_sponsorship: false }
@@ -165,9 +165,8 @@ describe("POST /api/apply — legal gate (A4)", () => {
     const res = await POST(makeRequest());
     const body = await res.json();
 
-    expect(res.status).toBe(422);
-    expect(body.field).toBe("hk_residency");
-    expect(body.error).toBeTruthy();
+    expect(res.status).toBe(200);
+    expect(body.visaWarning).toBeTruthy();
   });
 
   it("proceeds to ATS submission when profile is compatible", async () => {
