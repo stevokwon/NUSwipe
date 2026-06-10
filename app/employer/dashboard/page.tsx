@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Briefcase, Users, FileText, CheckCircle, Clock, ExternalLink, Plus, Trash2, Edit3, X, Save, RefreshCw } from "lucide-react";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 
 interface ApplicationWithCandidate extends Application {
   jobs: Job;
@@ -359,9 +360,7 @@ export default function EmployerDashboard() {
                           {job.division ? `${job.division} · ` : ""} {job.location === "SG" ? "🇸🇬 Singapore" : job.location === "HK" ? "🇭🇰 Hong Kong" : "🇸🇬 SG / 🇭🇰 HK"}
                         </CardDescription>
                       </div>
-                      {job.logo_url && (
-                        <img src={job.logo_url} alt="Company logo" className="h-10 w-10 rounded-lg object-cover bg-white p-1" />
-                      )}
+                      <CompanyLogo company={job.company} logoUrl={job.logo_url} />
                     </CardHeader>
                     <CardContent className="space-y-3 pb-4">
                       {job.salary_range && (

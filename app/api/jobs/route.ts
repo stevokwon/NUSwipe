@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getCompanyLogo } from "@/lib/utils";
 
 // Explicit column list — mirrors jobs table in 001_init.sql.
 // Excludes DB-internal `active` (filtered server-side) to keep the response lean.
@@ -120,6 +121,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Automatically resolve logo if not provided
+    const finalLogoUrl = getCompanyLogo(company, logo_url);
+
     const jobPayload = {
       company,
       role,
@@ -132,7 +136,7 @@ export async function POST(req: NextRequest) {
       ats_board_token: ats_type !== "url" ? ats_board_token : null,
       ats_job_id: ats_type !== "url" ? ats_job_id : null,
       ats_fallback_url: ats_fallback_url || null,
-      logo_url: logo_url || null,
+      logo_url: finalLogoUrl || null,
       tags: Array.isArray(tags) ? tags : [],
       posted_by: user.id,
       source: 'platform',

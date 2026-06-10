@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import type { Job } from "@/lib/types";
+import { getCompanyLogo } from "@/lib/utils";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 
 interface Props {
   job: Job;
@@ -76,16 +79,11 @@ export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand, scor
         {/* Header row: logo + company/role + match */}
         <div className="flex items-start justify-between gap-3 mb-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/15 flex items-center justify-center shrink-0 overflow-hidden">
-              {job.logo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={job.logo_url} alt={job.company} className="w-9 h-9 object-contain" />
-              ) : (
-                <span data-testid="logo-initials" className="font-bold text-white text-sm">
-                  {initials(job.company)}
-                </span>
-              )}
-            </div>
+            <CompanyLogo 
+              company={job.company} 
+              logoUrl={job.logo_url} 
+              className="h-14 w-14"
+            />
             <div className="min-w-0">
               <p data-testid="job-company" className="text-xs text-slate-400 font-medium truncate">
                 {job.company}

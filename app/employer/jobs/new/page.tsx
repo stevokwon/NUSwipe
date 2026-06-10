@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import { 
   Briefcase, 
   MapPin, 
@@ -503,13 +504,11 @@ export default function NewJobPage() {
                     {/* Preview Card */}
                     <div className="bg-slate-950/80 rounded-3xl border border-white/10 overflow-hidden">
                       <div className="p-6 flex items-start gap-4">
-                        <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center p-2 shrink-0 overflow-hidden">
-                          {formData.logo_url ? (
-                            <img src={formData.logo_url} alt="Logo" className="w-full h-full object-contain" />
-                          ) : (
-                            <Building2 className="h-8 w-8 text-slate-400" />
-                          )}
-                        </div>
+                        <CompanyLogo 
+                          company={formData.company || "Job Title"} 
+                          logoUrl={formData.logo_url} 
+                          className="h-16 w-16"
+                        />
                         <div className="flex-1">
                           <h3 className="text-xl font-bold">{formData.role || "Job Title"}</h3>
                           <p className="text-indigo-400 font-medium">{formData.company || "Company Name"}</p>
