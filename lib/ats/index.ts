@@ -15,8 +15,17 @@ export async function applyToJob(
 ): Promise<ApplyResult> {
   switch (job.ats_type) {
     case "greenhouse": {
-      const submissionId = await submitToGreenhouse(profile, job);
-      return { kind: "submitted", submissionId };
+      try {
+        const submissionId = await submitToGreenhouse(profile, job);
+        return { kind: "submitted", submissionId };
+      } catch {
+        // Greenhouse's apply endpoint rejects server-side POSTs.
+        // Fall back to the hosted URL so the candidate can apply manually.
+        if (job.ats_fallback_url) {
+          return { kind: "redirect", url: job.ats_fallback_url };
+        }
+        throw new Error("Greenhouse submission failed and no fallback URL is available.");
+      }
     }
     case "lever": {
       try {
