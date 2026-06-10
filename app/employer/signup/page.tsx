@@ -23,9 +23,9 @@ export default function EmployerSignupPage() {
     e.preventDefault();
     setLoading(true);
 
-    console.log("Initializing Supabase with URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
     const supabase = createClient();
-    console.log("Attempting signUp for:", email);
+    
+    // 1. Perform Signup
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -40,40 +40,35 @@ export default function EmployerSignupPage() {
     });
 
     if (error) {
-      console.error("SignUp Error:", error);
       toast.error(error.message);
       setLoading(false);
       return;
     }
-    console.log("SignUp Success:", data);
 
+    // 2. Create the employer row in the new 'employers' table
     if (data.user) {
-      // Create the employer row in the new 'employers' table
+      console.log("Attempting upsert for user:", data.user.id);
+      
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: upsertError } = await (supabase as any).from("employers").upsert({
         id: data.user.id,
-        email,
+        email: email,
         company_name: companyName,
         contact_name: contactName,
       });
 
       if (upsertError) {
         console.error("Employer Upsert Error:", upsertError);
-        toast.error(`Employer profile creation failed: ${upsertError.message}`);
+        toast.error(`Employer record creation failed: ${upsertError.message}`);
         setLoading(false);
         return;
       }
+      console.log("Employer upsert successful");
     }
 
-    if (!data.session) {
-      setIsSubmitted(true);
-      setLoading(false);
-      toast.success("Check your corporate email to confirm your registration!");
-    } else {
-      toast.success("Employer account created! Welcome to NUSwipe.");
-      router.push("/employer/dashboard");
-      router.refresh();
-    }
+    setIsSubmitted(true);
+    setLoading(false);
+    toast.success("Check your corporate email to confirm your registration!");
   }
 
   if (isSubmitted) {

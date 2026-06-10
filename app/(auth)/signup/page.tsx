@@ -36,6 +36,21 @@ export default function SignupPage() {
       return;
     }
 
+    // Check if email exists in employers
+    if (data.user) {
+      const { data: existingEmployer } = await supabase
+        .from("employers")
+        .select("id")
+        .ilike("email", email)
+        .single();
+
+      if (existingEmployer) {
+        toast.error("This email is already registered as an Employer. Please use the Employer Login.");
+        setLoading(false);
+        return;
+      }
+    }
+
     if (!data.session) {
       setIsSubmitted(true);
       setLoading(false);
@@ -80,7 +95,7 @@ export default function SignupPage() {
       <Card className="w-full max-w-sm border-white/10 bg-white/5 backdrop-blur-sm text-white">
         <CardHeader className="text-center pb-2">
           <div className="text-4xl mb-2">🚀</div>
-          <CardTitle className="text-2xl font-bold">Join NUSwipe</CardTitle>
+          <CardTitle className="text-2xl font-bold">NUSwipe for Candidates</CardTitle>
           <CardDescription className="text-slate-300">
             Built by NUS students for APAC grads.
           </CardDescription>
@@ -126,6 +141,11 @@ export default function SignupPage() {
               Sign in
             </Link>
           </p>
+          <div className="border-t border-white/10 mt-6 pt-4 text-center">
+            <Link href="/employer/signup" className="text-xs text-slate-400 hover:text-white">
+              Are you an Employer? Create Employer Account →
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
