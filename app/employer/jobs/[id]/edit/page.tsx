@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
+import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import type { Job, AtsType, Profile } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -494,13 +495,11 @@ export default function EditJobPage({ params }: { params: Promise<{ id: string }
 
                   <div className="bg-slate-950/80 rounded-3xl border border-white/10 overflow-hidden">
                     <div className="p-6 flex items-start gap-4">
-                      <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center p-2 shrink-0 overflow-hidden">
-                        {formData.logo_url ? (
-                          <img src={formData.logo_url} alt="Logo" className="w-full h-full object-contain" />
-                        ) : (
-                          <Building2 className="h-8 w-8 text-slate-400" />
-                        )}
-                      </div>
+                      <CompanyLogo 
+                        company={formData.company} 
+                        logoUrl={formData.logo_url} 
+                        className="h-16 w-16"
+                      />
                       <div className="flex-1">
                         <h3 className="text-xl font-bold">{formData.role}</h3>
                         <p className="text-indigo-400 font-medium">{formData.company}</p>

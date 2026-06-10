@@ -142,7 +142,7 @@ function ApplicationCard({
       <CompanyLogo 
         company={job?.company ?? "Unknown"} 
         logoUrl={job?.logo_url} 
-        className="w-12 h-12" 
+        className="h-14 w-14" 
       />
 
       {/* Details */}

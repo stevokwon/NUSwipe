@@ -43,16 +43,16 @@ export function CompanyLogo({ company, logoUrl, className = "h-14 w-14", size = 
   };
 
   return (
-    <div className={`rounded-2xl border border-white/20 bg-white p-1 flex items-center justify-center shadow-lg overflow-hidden shrink-0 ${className}`}>
+    <div className={`rounded-2xl border border-white/20 bg-white p-0 flex items-center justify-center shadow-lg overflow-hidden shrink-0 ${className}`}>
       {!failedAll && currentUrl ? (
         <img 
           src={currentUrl} 
           alt={`${company} logo`} 
-          className="w-full h-full object-contain"
+          className="w-full h-full object-contain scale-[1.05]"
           onError={handleError}
         />
       ) : (
-        <span className="font-bold text-slate-400 text-sm tracking-tighter">
+        <span className="font-bold text-slate-400 text-xl tracking-tighter">
           {initials(company)}
         </span>
       )}
