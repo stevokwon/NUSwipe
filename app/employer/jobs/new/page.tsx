@@ -112,6 +112,11 @@ export default function NewJobPage() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
+      // Validation: ats_fallback_url is required when ats_type is 'url'
+      if (formData.ats_type === 'url' && !formData.ats_fallback_url) {
+        throw new Error("External Application URL is required when ATS type is 'URL'");
+      }
+
       const tags = formData.tagsInput
         .split(",")
         .map(t => t.trim())
@@ -134,6 +139,8 @@ export default function NewJobPage() {
         posted_by: user.id,
         active: true,
       };
+
+      console.log("Submitting job payload:", payload);
 
       const res = await fetch("/api/jobs", {
         method: "POST",
