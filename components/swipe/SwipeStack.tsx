@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import type { Job } from "@/lib/types";
+import type { ScoreResult } from "@/lib/scoring/rule-based";
 import { JobCard } from "./JobCard";
 
 const SWIPE_THRESHOLD = 100;
@@ -11,9 +12,10 @@ const FILTERS = ["All Roles", "Internships", "Full-time", "SG Only", "Visa ✓"]
 interface Props {
   initialJobs: Job[];
   isLoading?: boolean;
+  scores?: Map<string, ScoreResult>;
 }
 
-export function SwipeStack({ initialJobs, isLoading = false }: Props) {
+export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
   const [jobs]          = useState<Job[]>(initialJobs);
   const [current, setCurrent]   = useState(0);
   const [drag, setDrag]         = useState({ x: 0, y: 0, active: false });
@@ -287,6 +289,8 @@ export function SwipeStack({ initialJobs, isLoading = false }: Props) {
               e.stopPropagation();
               setExpanded((v) => !v);
             }}
+            score={scores?.get(topJob!.id)?.score}
+            reasons={scores?.get(topJob!.id)?.reasons}
           />
         </div>
       </div>
