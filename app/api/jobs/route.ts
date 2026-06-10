@@ -135,6 +135,7 @@ export async function POST(req: NextRequest) {
       logo_url: logo_url || null,
       tags: Array.isArray(tags) ? tags : [],
       posted_by: user.id,
+      source: 'platform',
       active: true,
     };
 
