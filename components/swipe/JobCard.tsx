@@ -7,6 +7,8 @@ interface Props {
   dragX?: number;
   expanded?: boolean;
   onToggleExpand?: (e: React.MouseEvent) => void;
+  score?: number;
+  reasons?: string[];
 }
 
 /** Two-letter initials from company name (e.g. "Goldman Sachs" → "GS", "Google" → "G") */
@@ -19,30 +21,29 @@ function initials(company: string): string {
     .toUpperCase();
 }
 
-/** Deterministic match % derived from job ID — consistent across renders */
-function matchScore(id: string): number {
-  const n = parseInt(id.replace(/-/g, "").slice(-6), 16);
-  return 75 + (n % 23);
-}
-
-export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand }: Props) {
+export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand, score, reasons }: Props) {
   const applyOpacity = Math.min(1, Math.max(0, dragX / 80));
   const skipOpacity  = Math.min(1, Math.max(0, -dragX / 80));
-  const match        = matchScore(job.id);
 
   const matchColor =
-    match >= 90 ? "#4ade80" : match >= 85 ? "#c084fc" : "#e2e8f0";
+    score !== undefined
+      ? score >= 90 ? "#4ade80" : score >= 85 ? "#c084fc" : "#e2e8f0"
+      : "#e2e8f0";
   const matchBg =
-    match >= 90
-      ? "rgba(74,222,128,0.15)"
-      : match >= 85
-      ? "rgba(192,132,252,0.2)"
+    score !== undefined
+      ? score >= 90
+        ? "rgba(74,222,128,0.15)"
+        : score >= 85
+        ? "rgba(192,132,252,0.2)"
+        : "rgba(255,255,255,0.08)"
       : "rgba(255,255,255,0.08)";
   const matchBorder =
-    match >= 90
-      ? "rgba(74,222,128,0.3)"
-      : match >= 85
-      ? "rgba(192,132,252,0.35)"
+    score !== undefined
+      ? score >= 90
+        ? "rgba(74,222,128,0.3)"
+        : score >= 85
+        ? "rgba(192,132,252,0.35)"
+        : "rgba(255,255,255,0.1)"
       : "rgba(255,255,255,0.1)";
 
   return (
@@ -95,18 +96,20 @@ export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand }: Pr
             </div>
           </div>
 
-          {/* Match badge */}
-          <div
-            className="shrink-0 rounded-xl px-2.5 py-1 text-center"
-            style={{ background: matchBg, border: `1px solid ${matchBorder}` }}
-          >
-            <div className="text-base font-bold" style={{ color: matchColor }}>
-              {match}%
+          {/* Match badge — only show if score is provided */}
+          {score !== undefined && (
+            <div
+              className="shrink-0 rounded-xl px-2.5 py-1 text-center"
+              style={{ background: matchBg, border: `1px solid ${matchBorder}` }}
+            >
+              <div className="text-base font-bold" style={{ color: matchColor }}>
+                {score}%
+              </div>
+              <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">
+                match
+              </div>
             </div>
-            <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">
-              match
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Meta pills */}
@@ -138,6 +141,25 @@ export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand }: Pr
                 }}
               >
                 {tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Reasoning chips */}
+        {reasons && reasons.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {reasons.map((r) => (
+              <span
+                key={r}
+                className="text-[10px] font-semibold px-2 py-0.5 rounded-md"
+                style={{
+                  background: "rgba(74,222,128,0.12)",
+                  border: "1px solid rgba(74,222,128,0.2)",
+                  color: "#86efac",
+                }}
+              >
+                {r}
               </span>
             ))}
           </div>

@@ -5,6 +5,8 @@ import { SwipeStack } from "@/components/swipe/SwipeStack";
 import { ExtensionPrompt } from "@/components/swipe/ExtensionPrompt";
 import type { Profile, Job } from "@/lib/types";
 import { isProfileComplete } from "@/lib/types";
+import { scoreJob } from "@/lib/scoring/rule-based";
+import type { ScoreResult } from "@/lib/scoring/rule-based";
 
 export default async function SwipePage() {
   const supabase = await createClient();
@@ -59,12 +61,19 @@ export default async function SwipePage() {
 
   const unseenJobs = ((jobs ?? []) as Job[]).filter((j) => !seenIds.has(j.id));
 
+  const scores = new Map<string, ScoreResult>();
+  if (profile) {
+    for (const job of unseenJobs) {
+      scores.set(job.id, scoreJob(profile as Profile, job));
+    }
+  }
+
   return (
     <div className="flex flex-col items-center pt-6 pb-16 px-4">
       <div className="w-full max-w-sm mb-4">
         <ExtensionPrompt />
       </div>
-      <SwipeStack initialJobs={unseenJobs} />
+      <SwipeStack initialJobs={unseenJobs} scores={scores} />
     </div>
   );
 }
