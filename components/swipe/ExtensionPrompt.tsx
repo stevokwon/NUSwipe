@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 
 const STORAGE_KEY = "nusw_ext_prompt_dismissed";
 
-export function ExtensionPrompt(): JSX.Element | null {
+export function ExtensionPrompt(): React.ReactElement | null {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
