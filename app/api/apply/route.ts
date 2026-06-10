@@ -90,14 +90,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       extension_token: extensionToken,
     };
 
-    if (result.kind === "redirect") {
-      // Record as 'pending' — submission unconfirmed until user completes external form
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await supabase.from("applications").insert(insertPayload as any);
-      return NextResponse.json({ redirect: result.url, visaWarning }, { status: 200 });
-    }
-
-    // Direct ATS submission succeeded — record as 'applied'
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await supabase.from("applications").insert(insertPayload as any);
 
@@ -111,6 +103,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       resume_url: p.resume_url ?? "",
       skills: p.skills ?? [],
     };
+
+    if (result.kind === "redirect") {
+      const atsType = (job as Job).ats_type;
+      if (atsType === "greenhouse" || atsType === "lever") {
+        // Server-side POST is always blocked by Greenhouse/Lever bot protection.
+        // Hand off to the Chrome extension: return extensionToken + the ATS job URL
+        // so content-nusw.ts sends NUSW_SUBMIT and the extension fills the form.
+        return NextResponse.json(
+          { success: true, visaWarning, extensionToken, profile: profilePayload, jobUrl: result.url },
+          { status: 200 }
+        );
+      }
+      // url-type jobs: open external page manually, no extension involved
+      return NextResponse.json({ redirect: result.url, visaWarning }, { status: 200 });
+    }
 
     return NextResponse.json(
       { success: true, submissionId: result.submissionId, visaWarning, extensionToken, profile: profilePayload },
