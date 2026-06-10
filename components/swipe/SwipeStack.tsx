@@ -152,7 +152,7 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
         window.postMessage(
           {
             type: "NUSW_SUBMIT",
-            jobUrl: job.ats_fallback_url ?? "",
+            jobUrl: (data.jobUrl ?? job.ats_fallback_url) as string,
             jobId: job.id,
             extensionToken: data.extensionToken as string,
             profile: data.profile,
