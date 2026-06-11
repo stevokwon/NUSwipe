@@ -24,6 +24,7 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
   const [showMatch, setShowMatch]       = useState(false);
   const [submitting, setSubmitting]     = useState(false);
   const [activeFilters, setActiveFilters] = useState<Set<number>>(new Set());
+  const [minScore, setMinScore]           = useState(0);
   const [expanded, setExpanded]         = useState(false);
 
   const cardRef  = useRef<HTMLDivElement>(null);
@@ -54,23 +55,22 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
     });
   }
 
-  const filteredJobs: Job[] = activeFilters.size === 0
-    ? jobs
-    : jobs.filter((job) => {
-        if (activeFilters.has(1)) {
-          if (!job.tags.some((t) => t.toLowerCase().includes("internship"))) return false;
-        }
-        if (activeFilters.has(2)) {
-          if (job.tags.some((t) => t.toLowerCase().includes("internship"))) return false;
-        }
-        if (activeFilters.has(3)) {
-          if (!job.location.toLowerCase().match(/\bsg\b|singapore/)) return false;
-        }
-        if (activeFilters.has(4)) {
-          if (!job.visa_sponsorship) return false;
-        }
-        return true;
-      });
+  const filteredJobs: Job[] = jobs.filter((job) => {
+    if (minScore > 0 && (scores?.[job.id]?.score ?? 0) < minScore) return false;
+    if (activeFilters.has(1)) {
+      if (!job.tags.some((t) => t.toLowerCase().includes("internship"))) return false;
+    }
+    if (activeFilters.has(2)) {
+      if (job.tags.some((t) => t.toLowerCase().includes("internship"))) return false;
+    }
+    if (activeFilters.has(3)) {
+      if (!job.location.toLowerCase().match(/\bsg\b|singapore/)) return false;
+    }
+    if (activeFilters.has(4)) {
+      if (!job.visa_sponsorship) return false;
+    }
+    return true;
+  });
 
   const topJob  = filteredJobs[current]     ?? null;
   const nextJob = filteredJobs[current + 1] ?? null;
@@ -199,7 +199,7 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
   // Reset current index when filters change to avoid out-of-bounds
   useEffect(() => {
     setCurrent(0);
-  }, [activeFilters]);
+  }, [activeFilters, minScore]);
 
   // ── Derived values ───────────────────────────────────────────────────────────
 
@@ -304,6 +304,33 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
             </button>
           );
         })}
+      </div>
+
+      {/* Match score filter */}
+      <div className="mb-5 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Min. Match</span>
+          <span className={`text-sm font-bold tabular-nums ${minScore === 0 ? "text-slate-500" : minScore >= 70 ? "text-emerald-400" : minScore >= 40 ? "text-yellow-400" : "text-slate-300"}`}>
+            {minScore === 0 ? "Any" : `${minScore}%+`}
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={5}
+          value={minScore}
+          onChange={(e) => setMinScore(Number(e.target.value))}
+          className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+          style={{
+            background: `linear-gradient(to right, #7c3aed ${minScore}%, rgba(255,255,255,0.1) ${minScore}%)`,
+          }}
+        />
+        <div className="flex justify-between mt-1.5 text-[10px] text-slate-600">
+          <span>Any</span>
+          <span>50%</span>
+          <span>100%</span>
+        </div>
       </div>
 
       {/* Card stack */}
@@ -439,6 +466,25 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
           30%  { transform: scale(1);      opacity: 1; }
           80%  { transform: scale(1);      opacity: 1; }
           100% { transform: scale(0.8);    opacity: 0; }
+        }
+        input[type='range']::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #7c3aed;
+          border: 2px solid #a78bfa;
+          cursor: pointer;
+          box-shadow: 0 0 6px rgba(124,58,237,0.6);
+        }
+        input[type='range']::-moz-range-thumb {
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #7c3aed;
+          border: 2px solid #a78bfa;
+          cursor: pointer;
+          box-shadow: 0 0 6px rgba(124,58,237,0.6);
         }
       `}</style>
     </div>

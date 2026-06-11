@@ -26,19 +26,42 @@ interface SubmitResult {
 // Map from background tabId → { nuswTabId, nuswOrigin, extensionToken, jobId }
 const pendingTabs = new Map<number, { nuswTabId: number; nuswOrigin: string; extensionToken: string; jobId: string }>();
 
+async function fetchResumeBase64(url: string): Promise<{ base64: string; filename: string } | null> {
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const buf = await resp.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let binary = "";
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    const base64 = btoa(binary);
+    const filename = url.split("/").pop()?.split("?")[0] ?? "resume.pdf";
+    return { base64, filename };
+  } catch {
+    return null;
+  }
+}
+
 // When the ATS tab finishes loading, retrieve the stored payload and send NUSW_FILL
 // so the content script knows to start filling the form.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status !== "complete") return;
   if (!pendingTabs.has(tabId)) return;
 
-  chrome.storage.session.get(`payload_${tabId}`, (result) => {
+  chrome.storage.session.get(`payload_${tabId}`, async (result) => {
     const payload = result[`payload_${tabId}`] as SubmitPayload | undefined;
     if (!payload) return;
 
+    const resume = payload.profile.resume_url
+      ? await fetchResumeBase64(payload.profile.resume_url)
+      : null;
+
     chrome.tabs.sendMessage(tabId, {
       type: "NUSW_FILL",
-      payload: payload.profile,
+      payload: {
+        ...payload.profile,
+        ...(resume ? { resume_base64: resume.base64, resume_filename: resume.filename } : {}),
+      },
       jobId: payload.jobId,
       extensionToken: payload.extensionToken,
     });
