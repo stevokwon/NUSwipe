@@ -7,13 +7,16 @@ const mockTabsCreate = vi.fn();
 const mockTabsRemove = vi.fn();
 const mockTabsSendMessage = vi.fn();
 const mockRuntimeOnMessage = { addListener: vi.fn() };
+const mockTabsOnUpdated = { addListener: vi.fn() };
 const mockStorageSessionSet = vi.fn();
+const mockStorageSessionGet = vi.fn();
 
 (globalThis as Record<string, unknown>).chrome = {
   tabs: {
     create: mockTabsCreate,
     remove: mockTabsRemove,
     sendMessage: mockTabsSendMessage,
+    onUpdated: mockTabsOnUpdated,
   },
   runtime: {
     onMessage: mockRuntimeOnMessage,
@@ -21,6 +24,7 @@ const mockStorageSessionSet = vi.fn();
   storage: {
     session: {
       set: mockStorageSessionSet,
+      get: mockStorageSessionGet,
     },
   },
 };
@@ -32,6 +36,8 @@ type MessageHandler = (
   sender: { tab?: { id?: number } },
   sendResponse: (r: unknown) => void
 ) => boolean | undefined;
+
+type TabUpdateHandler = (tabId: number, changeInfo: { status?: string }) => void;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -59,20 +65,23 @@ const BASE_SUBMIT_PAYLOAD = {
 
 describe("background.ts message handler", () => {
   let handler: MessageHandler;
+  let onUpdatedHandler: TabUpdateHandler;
 
   beforeAll(async () => {
     // Import background module once — it calls addListener at module load time
     await import("../src/background");
-    // Capture the registered handler (called exactly once at import)
+    // Capture the registered handlers (called exactly once at import)
     handler = (mockRuntimeOnMessage.addListener as Mock).mock.calls[0][0] as MessageHandler;
+    onUpdatedHandler = (mockTabsOnUpdated.addListener as Mock).mock.calls[0][0] as TabUpdateHandler;
   });
 
   beforeEach(() => {
-    // Clear call history between tests but preserve the handler reference
+    // Clear call history between tests but preserve the handler references
     mockTabsCreate.mockReset();
     mockTabsRemove.mockReset();
     mockTabsSendMessage.mockReset();
     mockStorageSessionSet.mockReset();
+    mockStorageSessionGet.mockReset();
     vi.stubGlobal("fetch", vi.fn());
   });
 
@@ -242,5 +251,92 @@ describe("background.ts message handler", () => {
     expect(mockTabsSendMessage).not.toHaveBeenCalled();
     expect(global.fetch).not.toHaveBeenCalled();
     expect(sendResponse).not.toHaveBeenCalled();
+  });
+
+  it("registers a tabs.onUpdated listener on load", () => {
+    expect(mockTabsOnUpdated.addListener).toHaveBeenCalledOnce();
+    expect(typeof onUpdatedHandler).toBe("function");
+  });
+
+  it("onUpdated — ignored when tab is not in pendingTabs", async () => {
+    await onUpdatedHandler(9000, { status: "complete" });
+    await flushMicrotasks();
+
+    expect(mockStorageSessionGet).not.toHaveBeenCalled();
+    expect(mockTabsSendMessage).not.toHaveBeenCalled();
+  });
+
+  it("onUpdated — ignored when status is not complete", async () => {
+    // Populate pendingTabs
+    mockTabsCreate.mockResolvedValueOnce({ id: 601 });
+    handler({ ...BASE_SUBMIT_PAYLOAD }, { tab: { id: 6 } }, vi.fn());
+    await flushMicrotasks();
+
+    await onUpdatedHandler(601, { status: "loading" });
+    await flushMicrotasks();
+
+    expect(mockStorageSessionGet).not.toHaveBeenCalled();
+  });
+
+  it("onUpdated — NUSW_FILL includes resume_base64 when fetch succeeds", async () => {
+    // Populate pendingTabs: NUSwipe tab 7 → ATS tab 701
+    mockTabsCreate.mockResolvedValueOnce({ id: 701 });
+    handler({ ...BASE_SUBMIT_PAYLOAD, jobId: "job-resume" }, { tab: { id: 7 } }, vi.fn());
+    await flushMicrotasks();
+
+    // storage.session.get calls callback synchronously with stored payload
+    mockStorageSessionGet.mockImplementation((_key: string, cb: (r: Record<string, unknown>) => void) => {
+      cb({ payload_701: { ...BASE_SUBMIT_PAYLOAD, jobId: "job-resume" } });
+    });
+
+    // fetch returns a minimal PDF-like buffer (%PDF header bytes)
+    const fakeBytes = new Uint8Array([37, 80, 68, 70]);
+    (global.fetch as Mock).mockResolvedValueOnce({
+      ok: true,
+      arrayBuffer: () => Promise.resolve(fakeBytes.buffer),
+    });
+
+    await onUpdatedHandler(701, { status: "complete" });
+    await flushMicrotasks();
+    await flushMicrotasks(); // second flush for the inner async fetch
+
+    expect(global.fetch).toHaveBeenCalledWith(BASE_SUBMIT_PAYLOAD.profile.resume_url);
+    expect(mockTabsSendMessage).toHaveBeenCalledWith(
+      701,
+      expect.objectContaining({
+        type: "NUSW_FILL",
+        payload: expect.objectContaining({
+          resume_base64: expect.any(String),
+          resume_filename: "resume.pdf",
+        }),
+      })
+    );
+  });
+
+  it("onUpdated — NUSW_FILL sent without resume fields when fetch fails", async () => {
+    // Populate pendingTabs: NUSwipe tab 8 → ATS tab 801
+    mockTabsCreate.mockResolvedValueOnce({ id: 801 });
+    handler({ ...BASE_SUBMIT_PAYLOAD, jobId: "job-noresume" }, { tab: { id: 8 } }, vi.fn());
+    await flushMicrotasks();
+
+    mockStorageSessionGet.mockImplementation((_key: string, cb: (r: Record<string, unknown>) => void) => {
+      cb({ payload_801: { ...BASE_SUBMIT_PAYLOAD, jobId: "job-noresume" } });
+    });
+
+    // fetch fails
+    (global.fetch as Mock).mockRejectedValueOnce(new Error("network error"));
+
+    await onUpdatedHandler(801, { status: "complete" });
+    await flushMicrotasks();
+    await flushMicrotasks();
+
+    // NUSW_FILL is still sent, just without resume_base64
+    expect(mockTabsSendMessage).toHaveBeenCalledWith(
+      801,
+      expect.objectContaining({
+        type: "NUSW_FILL",
+        payload: expect.not.objectContaining({ resume_base64: expect.anything() }),
+      })
+    );
   });
 });
