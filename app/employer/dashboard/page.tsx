@@ -7,12 +7,11 @@ import type { Job, Profile, Application, AtsType, Employer, Candidate } from "@/
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Briefcase, Users, FileText, CheckCircle, Clock, ExternalLink, Plus, Trash2, Edit3, X, Save, RefreshCw } from "lucide-react";
+import { Briefcase, Users, FileText, CheckCircle, Clock, ExternalLink, Plus, RefreshCw, Save } from "lucide-react";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 
 interface ApplicationWithCandidate extends Application {
@@ -34,6 +33,7 @@ export default function EmployerDashboard() {
 
   // Navigation / Filter State
   const [activeTab, setActiveTab] = useState<"jobs" | "applicants">("jobs");
+  const [showInactiveJobs, setShowInactiveJobs] = useState(false);
   const [selectedJobFilter, setSelectedJobFilter] = useState<string>("all");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("all");
 
@@ -114,44 +114,6 @@ export default function EmployerDashboard() {
       router.push("/employer/login");
       router.refresh();
     });
-  }
-
-  // Toggle job active state
-  async function toggleJobActive(job: Job) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
-        .from("jobs")
-        .update({ active: !job.active })
-        .eq("id", job.id)
-        .eq("posted_by", currentUser.id);
-
-      if (error) throw error;
-      toast.success(`Job marked as ${!job.active ? "Active" : "Inactive"}`);
-      loadData();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to toggle job status");
-    }
-  }
-
-  // Delete Job Posting
-  async function deleteJob(id: string) {
-    if (!confirm("Are you sure you want to delete this job posting? This will also delete all candidate applications associated with it.")) return;
-
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
-        .from("jobs")
-        .delete()
-        .eq("id", id)
-        .eq("posted_by", currentUser.id);
-
-      if (error) throw error;
-      toast.success("Job posting deleted");
-      loadData();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete job posting");
-    }
   }
 
   // Update candidate application status
@@ -333,6 +295,22 @@ export default function EmployerDashboard() {
         {/* Tab 1: Job Listings */}
         {activeTab === "jobs" && (
           <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-400">Manage Postings</h2>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="showInactive"
+                  checked={showInactiveJobs}
+                  onChange={(e) => setShowInactiveJobs(e.target.checked)}
+                  className="rounded border-white/10 bg-slate-900 text-indigo-600 focus:ring-indigo-500"
+                />
+                <Label htmlFor="showInactive" className="text-sm text-slate-400 cursor-pointer">
+                  Show Inactive Jobs
+                </Label>
+              </div>
+            </div>
+
             {jobs.length === 0 ? (
               <div className="text-center py-12 bg-slate-900/30 border border-dashed border-white/10 rounded-2xl">
                 <Briefcase className="h-10 w-10 text-slate-500 mx-auto mb-3" />
@@ -346,60 +324,56 @@ export default function EmployerDashboard() {
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
-                {jobs.map((job) => (
-                  <Card key={job.id} className="bg-slate-900/50 border-white/10 text-white flex flex-col justify-between hover:border-white/20 transition-all">
-                    <CardHeader className="pb-3 flex flex-row items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-lg font-bold">{job.role}</CardTitle>
-                          <Badge className={job.active ? "bg-emerald-950/50 text-emerald-400 border border-emerald-800/30 text-[10px]" : "bg-slate-800 text-slate-400 text-[10px]"}>
-                            {job.active ? "Active" : "Inactive"}
-                          </Badge>
+                {jobs
+                  .filter((job) => showInactiveJobs || job.active)
+                  .map((job) => (
+                  <button
+                    key={job.id}
+                    onClick={() => router.push(`/employer/jobs/${job.id}/edit`)}
+                    className="group text-left"
+                  >
+                    <Card 
+                      className={`h-full text-white flex flex-col justify-between transition-all border ${
+                        job.active 
+                          ? "bg-slate-900/50 border-white/10 group-hover:border-white/20" 
+                          : "bg-rose-950/20 border-rose-500/30 opacity-90 group-hover:bg-rose-950/30"
+                      }`}
+                    >
+                      <CardHeader className="pb-3 flex flex-row items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <CardTitle className="text-lg font-bold">{job.role}</CardTitle>
+                            <Badge className={job.active ? "bg-emerald-950/50 text-emerald-400 border border-emerald-800/30 text-[10px]" : "bg-slate-800 text-slate-400 text-[10px]"}>
+                              {job.active ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+                          <CardDescription className="text-slate-400 text-xs mt-1">
+                            {job.division ? `${job.division} · ` : ""} {job.location === "SG" ? "🇸🇬 Singapore" : job.location === "HK" ? "🇭🇰 Hong Kong" : "🇸🇬 SG / 🇭🇰 HK"}
+                          </CardDescription>
                         </div>
-                        <CardDescription className="text-slate-400 text-xs mt-1">
-                          {job.division ? `${job.division} · ` : ""} {job.location === "SG" ? "🇸🇬 Singapore" : job.location === "HK" ? "🇭🇰 Hong Kong" : "🇸🇬 SG / 🇭🇰 HK"}
-                        </CardDescription>
-                      </div>
-                      <CompanyLogo company={job.company} logoUrl={job.logo_url} />
-                    </CardHeader>
-                    <CardContent className="space-y-3 pb-4">
-                      {job.salary_range && (
-                        <p className="text-sm text-indigo-300 font-medium">💰 {job.salary_range}</p>
-                      )}
-                      {job.description && (
-                        <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">{job.description}</p>
-                      )}
-                      <div className="flex flex-wrap gap-1">
-                        {job.tags.map((tag) => (
-                          <Badge key={tag} variant="secondary" className="bg-white/5 text-slate-300 text-[10px] hover:bg-white/10">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="border-t border-white/10 pt-3 flex items-center justify-between text-xs text-slate-400">
-                        <span>ATS Type: <b className="text-indigo-400">{job.ats_type}</b></span>
-                        <span>Visa Sponsor: <b>{job.visa_sponsorship ? "Yes" : "No"}</b></span>
-                      </div>
-                    </CardContent>
-                    <div className="bg-white/5 px-4 py-3 flex items-center justify-between rounded-b-xl border-t border-white/5">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleJobActive(job)}
-                        className={`text-xs ${job.active ? "text-amber-400 hover:text-amber-300 hover:bg-amber-950/20" : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/20"}`}
-                      >
-                        {job.active ? "Pause Listing" : "Activate"}
-                      </Button>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => router.push(`/employer/jobs/${job.id}/edit`)} className="text-indigo-400 hover:text-indigo-300 hover:bg-white/5">
-                          <Edit3 className="h-3.5 w-3.5" /> Edit
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => deleteJob(job.id)} className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/20">
-                          <Trash2 className="h-3.5 w-3.5" /> Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
+                        <CompanyLogo company={job.company} logoUrl={job.logo_url} />
+                      </CardHeader>
+                      <CardContent className="space-y-3 pb-6">
+                        {job.salary_range && (
+                          <p className="text-sm text-indigo-300 font-medium">💰 {job.salary_range}</p>
+                        )}
+                        {job.description && (
+                          <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">{job.description}</p>
+                        )}
+                        <div className="flex flex-wrap gap-1">
+                          {job.tags.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="bg-white/5 text-slate-300 text-[10px]">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="border-t border-white/10 pt-3 flex items-center justify-between text-xs text-slate-400">
+                          <span>ATS Type: <b className="text-indigo-400">{job.ats_type}</b></span>
+                          <span>Visa Sponsor: <b>{job.visa_sponsorship ? "Yes" : "No"}</b></span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </button>
                 ))}
               </div>
             )}
