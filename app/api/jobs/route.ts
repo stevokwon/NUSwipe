@@ -96,6 +96,8 @@ export async function POST(req: NextRequest) {
       ats_fallback_url,
       logo_url,
       tags,
+      total_spots,
+      filled_spots,
     } = body;
 
     if (!company || !role || !location || !ats_type) {
@@ -138,6 +140,8 @@ export async function POST(req: NextRequest) {
       ats_fallback_url: ats_fallback_url || null,
       logo_url: finalLogoUrl || null,
       tags: Array.isArray(tags) ? tags : [],
+      total_spots: total_spots ?? 1,
+      filled_spots: filled_spots ?? 0,
       posted_by: user.id,
       source: 'platform',
       active: true,

@@ -157,6 +157,12 @@ export default function EmployerDashboard() {
   const interviewingCount = applications.filter((a) => a.status === "interviewing").length;
   const offersMade = applications.filter((a) => a.status === "offer").length;
 
+  // Map to store applicant counts per job
+  const applicantCounts = applications.reduce((acc, app) => {
+    acc[app.job_id] = (acc[app.job_id] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
   // Filtered applications
   const filteredApps = applications.filter((app) => {
     const jobMatch = selectedJobFilter === "all" || app.job_id === selectedJobFilter;
@@ -326,55 +332,70 @@ export default function EmployerDashboard() {
               <div className="grid md:grid-cols-2 gap-4">
                 {jobs
                   .filter((job) => showInactiveJobs || job.active)
-                  .map((job) => (
-                  <button
-                    key={job.id}
-                    onClick={() => router.push(`/employer/jobs/${job.id}/edit`)}
-                    className="group text-left"
-                  >
-                    <Card 
-                      className={`h-full text-white flex flex-col justify-between transition-all border ${
-                        job.active 
-                          ? "bg-slate-900/50 border-white/10 group-hover:border-white/20" 
-                          : "bg-rose-950/20 border-rose-500/30 opacity-90 group-hover:bg-rose-950/30"
-                      }`}
+                  .map((job) => {
+                    const count = applicantCounts[job.id] || 0;
+                    return (
+                    <button
+                      key={job.id}
+                      onClick={() => router.push(`/employer/jobs/${job.id}/edit`)}
+                      className="group text-left"
                     >
-                      <CardHeader className="pb-3 flex flex-row items-start justify-between gap-2">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <CardTitle className="text-lg font-bold">{job.role}</CardTitle>
-                            <Badge className={job.active ? "bg-emerald-950/50 text-emerald-400 border border-emerald-800/30 text-[10px]" : "bg-slate-800 text-slate-400 text-[10px]"}>
-                              {job.active ? "Active" : "Inactive"}
-                            </Badge>
+                      <Card 
+                        className={`h-full text-white flex flex-col justify-between transition-all border ${
+                          job.active 
+                            ? "bg-slate-900/50 border-white/10 group-hover:border-white/20" 
+                            : "bg-rose-950/20 border-rose-500/30 opacity-90 group-hover:bg-rose-950/30"
+                        }`}
+                      >
+                        <CardHeader className="pb-3 flex flex-row items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="text-lg font-bold">{job.role}</CardTitle>
+                              <Badge className={job.active ? "bg-emerald-950/50 text-emerald-400 border border-emerald-800/30 text-[10px]" : "bg-slate-800 text-slate-400 text-[10px]"}>
+                                {job.active ? "Active" : "Inactive"}
+                              </Badge>
+                            </div>
+                            <CardDescription className="text-slate-400 text-xs mt-1">
+                              {job.division ? `${job.division} · ` : ""} {job.location === "SG" ? "🇸🇬 Singapore" : job.location === "HK" ? "🇭🇰 Hong Kong" : "🇸🇬 SG / 🇭🇰 HK"}
+                            </CardDescription>
                           </div>
-                          <CardDescription className="text-slate-400 text-xs mt-1">
-                            {job.division ? `${job.division} · ` : ""} {job.location === "SG" ? "🇸🇬 Singapore" : job.location === "HK" ? "🇭🇰 Hong Kong" : "🇸🇬 SG / 🇭🇰 HK"}
-                          </CardDescription>
-                        </div>
-                        <CompanyLogo company={job.company} logoUrl={job.logo_url} />
-                      </CardHeader>
-                      <CardContent className="space-y-3 pb-6">
-                        {job.salary_range && (
-                          <p className="text-sm text-indigo-300 font-medium">💰 {job.salary_range}</p>
-                        )}
-                        {job.description && (
-                          <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">{job.description}</p>
-                        )}
-                        <div className="flex flex-wrap gap-1">
-                          {job.tags.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="bg-white/5 text-slate-300 text-[10px]">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                        <div className="border-t border-white/10 pt-3 flex items-center justify-between text-xs text-slate-400">
-                          <span>ATS Type: <b className="text-indigo-400">{job.ats_type}</b></span>
-                          <span>Visa Sponsor: <b>{job.visa_sponsorship ? "Yes" : "No"}</b></span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </button>
-                ))}
+                          <div className="flex flex-col items-end gap-2">
+                            <CompanyLogo company={job.company} logoUrl={job.logo_url} />
+                            <div className="flex items-center gap-1 text-xs text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20">
+                              <Users className="h-3 w-3" />
+                              {count} {count === 1 ? 'Applicant' : 'Applicants'}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3 pb-6">
+                          {job.salary_range && (
+                            <p className="text-sm text-indigo-300 font-medium">💰 {job.salary_range}</p>
+                          )}
+                          {job.description && (
+                            <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">{job.description}</p>
+                          )}
+                          <div className="flex flex-wrap gap-1">
+                            {job.tags.map((tag) => (
+                              <Badge key={tag} variant="secondary" className="bg-white/5 text-slate-300 text-[10px]">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                          <div className="border-t border-white/10 pt-3 flex items-center justify-between text-xs text-slate-400">
+                            <span>ATS Type: <b className="text-indigo-400">{job.ats_type}</b></span>
+                            <span className="flex items-center gap-1">
+                              Spots: <b>{job.filled_spots} / {job.total_spots}</b>
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-slate-400">
+                            <span>Visa Sponsor: <b>{job.visa_sponsorship ? "Yes" : "No"}</b></span>
+                          </div>
+
+                        </CardContent>
+                      </Card>
+                    </button>
+                    );
+                  })}
               </div>
             )}
           </div>

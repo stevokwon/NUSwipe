@@ -41,10 +41,20 @@ export type JobPostingFormData = {
   ats_fallback_url: string;
   logo_url: string;
   tagsInput: string;
+  total_spots: number;
+  filled_spots: number;
 };
 
 export type JobPostingFormErrors = Partial<
-  Record<"company" | "role" | "description" | "ats_fallback_url", string>
+  Record<
+    | "company"
+    | "role"
+    | "description"
+    | "ats_fallback_url"
+    | "total_spots"
+    | "filled_spots",
+    string
+  >
 >;
 
 type JobPostingFormProps = {
@@ -64,7 +74,6 @@ type JobPostingFormProps = {
   onDelete?: () => void;
   isActive?: boolean;
 };
-
 export const emptyJobPostingFormData: JobPostingFormData = {
   company: "",
   role: "",
@@ -79,6 +88,8 @@ export const emptyJobPostingFormData: JobPostingFormData = {
   ats_fallback_url: "",
   logo_url: "",
   tagsInput: "",
+  total_spots: 1,
+  filled_spots: 0,
 };
 
 export function validateJobPostingForm(
@@ -88,9 +99,17 @@ export function validateJobPostingForm(
 
   if (!formData.company.trim()) errors.company = "Company name is required.";
   if (!formData.role.trim()) errors.role = "Job title is required.";
-  if (!formData.description.trim()) errors.description = "Description is required.";
+  if (!formData.description.trim())
+    errors.description = "Description is required.";
   if (formData.ats_type === "url" && !formData.ats_fallback_url.trim()) {
     errors.ats_fallback_url = "Application URL is required.";
+  }
+  if (formData.total_spots < 1)
+    errors.total_spots = "Total spots must be at least 1.";
+  if (formData.filled_spots < 0)
+    errors.filled_spots = "Filled spots cannot be negative.";
+  if (formData.filled_spots > formData.total_spots) {
+    errors.filled_spots = "Filled spots cannot exceed total spots.";
   }
 
   return errors;
@@ -182,9 +201,10 @@ export function JobPostingForm({
             <FieldRow>
               <Field label="Primary Location">
                 <Select
-                  value={formData.location}
-                  onValueChange={(value) => onChange("location", value)}
+                value={formData.location}
+                onValueChange={(value) => onChange("location", value as string)}
                 >
+
                   <SelectTrigger className="bg-slate-950/50 border-white/10 text-white">
                     <SelectValue />
                   </SelectTrigger>
@@ -201,6 +221,39 @@ export function JobPostingForm({
                   value={formData.salary_range}
                   onChange={(value) => onChange("salary_range", value)}
                   placeholder="e.g. $5k - $8k / month"
+                />
+              </Field>
+            </FieldRow>
+
+            <FieldRow>
+              <Field
+                label="Total Available Spots"
+                required
+                error={errors.total_spots}
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  value={formData.total_spots}
+                  onChange={(event) =>
+                    onChange("total_spots", parseInt(event.target.value) || 0)
+                  }
+                  className="bg-slate-950/50 border-white/10 focus:border-indigo-500/50"
+                />
+              </Field>
+              <Field
+                label="Already Filled Spots"
+                required
+                error={errors.filled_spots}
+              >
+                <Input
+                  type="number"
+                  min={0}
+                  value={formData.filled_spots}
+                  onChange={(event) =>
+                    onChange("filled_spots", parseInt(event.target.value) || 0)
+                  }
+                  className="bg-slate-950/50 border-white/10 focus:border-indigo-500/50"
                 />
               </Field>
             </FieldRow>
@@ -370,7 +423,7 @@ export function JobPostingForm({
             <div className="p-6 flex items-start gap-4">
               <CompanyLogo
                 company={formData.company || "Company"}
-                logoUrl={formData.logo_url}
+                logoUrl={formData.logo_url || ""}
                 className="h-16 w-16"
               />
               <div className="flex-1">

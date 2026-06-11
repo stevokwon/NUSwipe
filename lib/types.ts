@@ -114,6 +114,8 @@ export interface Job {
   logo_url: string | null;
   tags: string[];
   active: boolean;
+  total_spots: number;
+  filled_spots: number;
   posted_by: string | null;
   created_at: string;
 }

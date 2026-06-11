@@ -88,6 +88,11 @@ export default function NewJobPage() {
       return;
     }
 
+    if (!userId) {
+      toast.error("You must be logged in to post a job.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -106,6 +111,8 @@ export default function NewJobPage() {
         ats_fallback_url: formData.ats_fallback_url || null,
         logo_url: formData.logo_url || null,
         tags: parseJobTags(formData.tagsInput),
+        total_spots: formData.total_spots,
+        filled_spots: formData.filled_spots,
         posted_by: userId,
         active: true,
       };
