@@ -52,7 +52,7 @@ export function CompanyLogo({ company, logoUrl, className = "h-14 w-14", size = 
           onError={handleError}
         />
       ) : (
-        <span className="font-bold text-slate-400 text-xl tracking-tighter">
+        <span data-testid="logo-initials" className="font-bold text-slate-400 text-xl tracking-tighter">
           {initials(company)}
         </span>
       )}

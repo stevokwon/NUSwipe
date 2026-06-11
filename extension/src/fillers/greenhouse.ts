@@ -7,6 +7,8 @@ export interface ApplyPayload {
   phone: string;
   linkedin_url: string | null;
   resume_url: string;
+  resume_base64?: string;
+  resume_filename?: string;
   skills: string[];
 }
 
@@ -18,6 +20,25 @@ function setInputValue(selector: string, value: string): void {
   el.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
+function attachResume(base64: string, filename: string): void {
+  const fileInput = document.querySelector<HTMLInputElement>(
+    "#resume, input[type='file'][name*='resume'], input[type='file']"
+  );
+  if (!fileInput) return;
+
+  const byteString = atob(base64);
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+  const blob = new Blob([ab], { type: "application/pdf" });
+  const file = new File([blob], filename, { type: "application/pdf" });
+
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  fileInput.files = dt.files;
+  fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
 export function fillGreenhouseForm(payload: ApplyPayload): void {
   setInputValue("#first_name", payload.first_name);
   setInputValue("#last_name", payload.last_name);
@@ -26,6 +47,10 @@ export function fillGreenhouseForm(payload: ApplyPayload): void {
 
   if (payload.linkedin_url) {
     setInputValue("input[name='job_application[linkedin_url]']", payload.linkedin_url);
+  }
+
+  if (payload.resume_base64 && payload.resume_filename) {
+    attachResume(payload.resume_base64, payload.resume_filename);
   }
 }
 

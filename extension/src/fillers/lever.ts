@@ -8,6 +8,8 @@ export interface ApplyPayload {
   phone: string;
   linkedin_url: string | null;
   resume_url: string;
+  resume_base64?: string;
+  resume_filename?: string;
   skills: string[];
 }
 
@@ -26,6 +28,25 @@ function fillField(selector: string, value: string): void {
   if (el) setReactInputValue(el, value);
 }
 
+function attachResume(base64: string, filename: string): void {
+  const fileInput = document.querySelector<HTMLInputElement>(
+    ".resume-section input[type='file'], input[type='file'][name='resume'], input[type='file']"
+  );
+  if (!fileInput) return;
+
+  const byteString = atob(base64);
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+  const blob = new Blob([ab], { type: "application/pdf" });
+  const file = new File([blob], filename, { type: "application/pdf" });
+
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  fileInput.files = dt.files;
+  fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
 export function fillLeverForm(payload: ApplyPayload): void {
   fillField(".application-name input", `${payload.first_name} ${payload.last_name}`);
   fillField(".application-email input", payload.email);
@@ -33,6 +54,10 @@ export function fillLeverForm(payload: ApplyPayload): void {
 
   if (payload.linkedin_url) {
     fillField(".application-urls input", payload.linkedin_url);
+  }
+
+  if (payload.resume_base64 && payload.resume_filename) {
+    attachResume(payload.resume_base64, payload.resume_filename);
   }
 }
 

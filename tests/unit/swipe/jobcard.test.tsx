@@ -1,6 +1,13 @@
 // @vitest-environment jsdom
 import { render, screen, cleanup } from "@testing-library/react";
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
+
+// CompanyLogo tries external URLs before showing initials; make it skip straight
+// to fallback so the initials span is rendered without needing onError to fire.
+vi.mock("@/lib/utils", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/utils")>();
+  return { ...real, getCompanyLogoCandidates: vi.fn().mockReturnValue([]) };
+});
 
 afterEach(cleanup);
 import { JobCard } from "@/components/swipe/JobCard";

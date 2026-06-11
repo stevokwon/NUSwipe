@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { fillGreenhouseForm, submitGreenhouseForm } from "@ext/fillers/greenhouse";
+import { fillGreenhouseForm, submitGreenhouseForm } from "../src/fillers/greenhouse";
 
 function buildGreenhouseForm(): void {
   document.body.innerHTML = `
@@ -62,6 +62,41 @@ describe("fillGreenhouseForm", () => {
   it("does not throw when form fields are missing", () => {
     document.body.innerHTML = "<form></form>";
 
+    expect(() => fillGreenhouseForm(basePayload)).not.toThrow();
+  });
+
+  it("injects resume file into #resume input when resume_base64 is provided", () => {
+    // jsdom does not implement DataTransfer — stub it to capture added files
+    const addedFiles: File[] = [];
+    const mockDt = { items: { add: (f: File) => addedFiles.push(f) }, files: [] as unknown as FileList };
+    vi.stubGlobal("DataTransfer", vi.fn().mockImplementation(function() { return mockDt; }));
+
+    document.body.innerHTML = `
+      <form id="application_form">
+        <input id="first_name" type="text" />
+        <input id="last_name" type="text" />
+        <input id="email" type="email" />
+        <input id="phone" type="tel" />
+        <input id="resume" type="file" />
+        <button type="submit">Submit</button>
+      </form>
+    `;
+    // jsdom's files setter only accepts a real FileList; intercept it so the
+    // DataTransfer assignment doesn't throw while still letting us assert on addedFiles
+    const fileInput = document.querySelector<HTMLInputElement>("#resume")!;
+    Object.defineProperty(fileInput, "files", { set: vi.fn(), configurable: true });
+
+    fillGreenhouseForm({ ...basePayload, resume_base64: btoa("%PDF"), resume_filename: "cv.pdf" });
+
+    expect(addedFiles).toHaveLength(1);
+    expect(addedFiles[0].name).toBe("cv.pdf");
+    expect(addedFiles[0].type).toBe("application/pdf");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("skips resume injection when resume_base64 is absent", () => {
+    buildGreenhouseForm();
     expect(() => fillGreenhouseForm(basePayload)).not.toThrow();
   });
 });

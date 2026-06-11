@@ -31,7 +31,7 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
   const payload = msg.payload as ApplyPayload;
 
   waitForForm()
-    .then(() => {
+    .then(async () => {
       fillLeverForm(payload);
       return submitLeverForm();
     })

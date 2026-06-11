@@ -65,6 +65,40 @@ describe("fillLeverForm", () => {
     expect(() => fillLeverForm(basePayload)).not.toThrow();
   });
 
+  it("injects resume file into file input when resume_base64 is provided", () => {
+    // jsdom does not implement DataTransfer — stub it to capture added files
+    const addedFiles: File[] = [];
+    const mockDt = { items: { add: (f: File) => addedFiles.push(f) }, files: [] as unknown as FileList };
+    vi.stubGlobal("DataTransfer", vi.fn().mockImplementation(function() { return mockDt; }));
+
+    document.body.innerHTML = `
+      <form>
+        <div class="application-name"><input type="text" /></div>
+        <div class="application-email"><input type="email" /></div>
+        <div class="application-phone"><input type="tel" /></div>
+        <div class="resume-section"><input type="file" /></div>
+        <button type="submit" data-qa="btn-submit-application">Submit</button>
+      </form>
+    `;
+    // jsdom's files setter only accepts a real FileList; intercept it so the
+    // DataTransfer assignment doesn't throw while still letting us assert on addedFiles
+    const fileInput = document.querySelector<HTMLInputElement>(".resume-section input[type='file']")!;
+    Object.defineProperty(fileInput, "files", { set: vi.fn(), configurable: true });
+
+    fillLeverForm({ ...basePayload, resume_base64: btoa("%PDF"), resume_filename: "cv.pdf" });
+
+    expect(addedFiles).toHaveLength(1);
+    expect(addedFiles[0].name).toBe("cv.pdf");
+    expect(addedFiles[0].type).toBe("application/pdf");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("skips resume injection when resume_base64 is absent", () => {
+    buildLeverForm();
+    expect(() => fillLeverForm(basePayload)).not.toThrow();
+  });
+
   it("dispatches input events for React compatibility", () => {
     const spy = vi.fn();
     document.querySelector<HTMLInputElement>(".application-name input")!
