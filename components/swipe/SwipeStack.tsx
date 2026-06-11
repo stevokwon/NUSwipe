@@ -321,6 +321,7 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
           step={5}
           value={minScore}
           onChange={(e) => setMinScore(Number(e.target.value))}
+          aria-label="Minimum match score"
           className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
           style={{
             background: `linear-gradient(to right, #7c3aed ${minScore}%, rgba(255,255,255,0.1) ${minScore}%)`,
@@ -467,7 +468,7 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
           80%  { transform: scale(1);      opacity: 1; }
           100% { transform: scale(0.8);    opacity: 0; }
         }
-        input[type='range']::-webkit-slider-thumb {
+        [data-testid='swipe-stack'] input[type='range']::-webkit-slider-thumb {
           -webkit-appearance: none;
           width: 16px;
           height: 16px;
@@ -477,7 +478,7 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
           cursor: pointer;
           box-shadow: 0 0 6px rgba(124,58,237,0.6);
         }
-        input[type='range']::-moz-range-thumb {
+        [data-testid='swipe-stack'] input[type='range']::-moz-range-thumb {
           width: 16px;
           height: 16px;
           border-radius: 50%;

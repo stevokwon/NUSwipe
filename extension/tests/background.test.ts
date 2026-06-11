@@ -266,6 +266,25 @@ describe("background.ts message handler", () => {
     expect(mockTabsSendMessage).not.toHaveBeenCalled();
   });
 
+  it("onUpdated — cleans up tab when session payload is missing", async () => {
+    // Populate pendingTabs
+    mockTabsCreate.mockResolvedValueOnce({ id: 901 });
+    handler({ ...BASE_SUBMIT_PAYLOAD }, { tab: { id: 9 } }, vi.fn());
+    await flushMicrotasks();
+
+    // storage.session.get returns nothing for this tab (eviction / race)
+    mockStorageSessionGet.mockImplementation((_key: string, cb: (r: Record<string, unknown>) => void) => {
+      cb({});
+    });
+
+    await onUpdatedHandler(901, { status: "complete" });
+    await flushMicrotasks();
+
+    // Tab must be closed and pendingTabs entry removed — no NUSW_FILL sent
+    expect(mockTabsRemove).toHaveBeenCalledWith(901);
+    expect(mockTabsSendMessage).not.toHaveBeenCalled();
+  });
+
   it("onUpdated — ignored when status is not complete", async () => {
     // Populate pendingTabs
     mockTabsCreate.mockResolvedValueOnce({ id: 601 });

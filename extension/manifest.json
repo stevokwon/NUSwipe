@@ -8,8 +8,7 @@
     "https://boards.greenhouse.io/*",
     "https://jobs.lever.co/*",
     "http://localhost:3000/*",
-    "https://*.nuswipe.com/*",
-    "https://*.supabase.co/*"
+    "https://*.nuswipe.com/*"
   ],
   "background": {
     "service_worker": "background.js"
