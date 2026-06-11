@@ -60,7 +60,6 @@ export default async function SwipePage() {
     .from("jobs")
     .select("*")
     .eq("active", true)
-    .in("ats_type", ["greenhouse", "lever"])
     .order("created_at", { ascending: false });
 
   const unseenJobs = ((jobs ?? []) as Job[]).filter((j) => !seenIds.has(j.id));
