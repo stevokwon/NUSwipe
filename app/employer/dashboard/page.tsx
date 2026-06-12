@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Briefcase, Users, FileText, CheckCircle, Clock, ExternalLink, Plus, RefreshCw, Save } from "lucide-react";
+import { JobActionsMenu } from "@/components/employer/JobActionsMenu";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 
 interface ApplicationWithCandidate extends Application {
@@ -84,14 +85,45 @@ export default function EmployerDashboard() {
         .from("applications")
         .select(`
           *,
-          jobs:job_id!inner(*),
-          candidates:user_id(*)
+          jobs:job_id (
+            id,
+            role,
+            company,
+            location,
+            division,
+            salary_range,
+            description,
+            tags,
+            ats_type,
+            filled_spots,
+            total_spots,
+            visa_sponsorship,
+            logo_url,
+            active,
+            posted_by
+          ),
+          candidates:user_id (
+            id,
+            email,
+            first_name,
+            last_name,
+            phone_number,
+            phone_country_code,
+            major,
+            gpa,
+            sg_university,
+            hk_university,
+            grad_month_year,
+            resume_url,
+            linkedin_url
+          )
         `)
-        .eq("jobs.posted_by", user.id);
+        .eq("jobs.posted_by", user.id)
+        .order("applied_at", { ascending: false });
 
       if (appsError) {
         console.error("Applications fetch error:", appsError);
-        throw new Error(appsError.message);
+        throw new Error("Failed to fetch applications");
       }
       setApplications(appsData as unknown as ApplicationWithCandidate[]);
     } catch (err: any) {
@@ -147,6 +179,35 @@ export default function EmployerDashboard() {
       loadData();
     } catch (err: any) {
       toast.error(err.message || "Failed to save notes");
+    }
+  }
+
+  async function togglePauseJob(job: Job) {
+    try {
+      const { error } = await (supabase as any)
+        .from("jobs")
+        .update({ active: !job.active })
+        .eq("id", job.id);
+      if (error) throw error;
+      toast.success(`Job ${job.active ? 'paused' : 'resumed'} successfully`);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update job status");
+    }
+  }
+
+  async function deleteJob(jobId: string) {
+    if (!confirm("Are you sure you want to delete this job? This action cannot be undone.")) return;
+    try {
+      const { error } = await (supabase as any)
+        .from("jobs")
+        .delete()
+        .eq("id", jobId);
+      if (error) throw error;
+      toast.success("Job deleted successfully");
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete job");
     }
   }
 
@@ -286,16 +347,6 @@ export default function EmployerDashboard() {
           >
             Job Listings ({jobs.length})
           </button>
-          <button
-            onClick={() => setActiveTab("applicants")}
-            className={`pb-2.5 font-semibold text-sm transition-colors border-b-2 px-1 ${
-              activeTab === "applicants"
-                ? "border-indigo-500 text-white"
-                : "border-transparent text-slate-400 hover:text-white"
-            }`}
-          >
-            Candidates & Applications ({totalApplicants})
-          </button>
         </div>
 
         {/* Tab 1: Job Listings */}
@@ -335,18 +386,24 @@ export default function EmployerDashboard() {
                   .map((job) => {
                     const count = applicantCounts[job.id] || 0;
                     return (
-                    <button
-                      key={job.id}
-                      onClick={() => router.push(`/employer/jobs/${job.id}/edit`)}
-                      className="group text-left"
-                    >
+                    <div key={job.id} className="group text-left">
                       <Card 
-                        className={`h-full text-white flex flex-col justify-between transition-all border ${
+                        className={`relative h-full text-white flex flex-col justify-between transition-all border ${
                           job.active 
                             ? "bg-slate-900/50 border-white/10 group-hover:border-white/20" 
                             : "bg-rose-950/20 border-rose-500/30 opacity-90 group-hover:bg-rose-950/30"
                         }`}
                       >
+                          <div className="absolute bottom-2 right-2 z-10">
+                          <JobActionsMenu 
+                            jobId={job.id} 
+                            active={job.active} 
+                            onEdit={() => router.push(`/employer/jobs/${job.id}/edit`)} 
+                            onTogglePause={() => togglePauseJob(job)} 
+                            onDelete={() => deleteJob(job.id)} 
+                            onManageApplicants={() => router.push(`/employer/applicants/${job.id}`)}
+                          />
+                        </div>
                         <CardHeader className="pb-3 flex flex-row items-start justify-between gap-2">
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
@@ -393,7 +450,7 @@ export default function EmployerDashboard() {
 
                         </CardContent>
                       </Card>
-                    </button>
+                    </div>
                     );
                   })}
               </div>
