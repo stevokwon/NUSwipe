@@ -9,6 +9,8 @@ import {
   emptyJobPostingFormData,
   parseJobTags,
   validateJobPostingForm,
+  formatSalaryRange,
+  parseSalaryRange,
   type JobPostingFormData,
   type JobPostingFormErrors,
 } from "@/components/employer/JobPostingForm";
@@ -58,13 +60,17 @@ export default function EditJobPage({
       }
 
       const currentJob = jobData as Job;
+      const salaryParts = parseSalaryRange(currentJob.salary_range);
+      
       setJob(currentJob);
       setFormData({
         company: currentJob.company,
         role: currentJob.role,
         location: currentJob.location,
         division: currentJob.division || "",
-        salary_range: currentJob.salary_range || "",
+        salary_min: salaryParts.min,
+        salary_max: salaryParts.max,
+        salary_period: salaryParts.salary_period,
         description: currentJob.description || "",
         visa_sponsorship: currentJob.visa_sponsorship,
         ats_type: currentJob.ats_type,
@@ -127,7 +133,7 @@ export default function EditJobPage({
         role: formData.role,
         location: formData.location,
         division: formData.division || null,
-        salary_range: formData.salary_range || null,
+        salary_range: formatSalaryRange(formData.salary_min, formData.salary_max, formData.salary_period) || null,
         description: formData.description || null,
         visa_sponsorship: formData.visa_sponsorship,
         ats_type: formData.ats_type,

@@ -32,7 +32,9 @@ export type JobPostingFormData = {
   role: string;
   location: string;
   division: string;
-  salary_range: string;
+  salary_min: string;
+  salary_max: string;
+  salary_period: "month" | "year";
   description: string;
   visa_sponsorship: boolean;
   ats_type: AtsType;
@@ -74,12 +76,15 @@ type JobPostingFormProps = {
   onDelete?: () => void;
   isActive?: boolean;
 };
+
 export const emptyJobPostingFormData: JobPostingFormData = {
   company: "",
   role: "",
   location: "SG",
   division: "",
-  salary_range: "",
+  salary_min: "",
+  salary_max: "",
+  salary_period: "month",
   description: "",
   visa_sponsorship: false,
   ats_type: "url",
@@ -91,6 +96,50 @@ export const emptyJobPostingFormData: JobPostingFormData = {
   total_spots: 1,
   filled_spots: 0,
 };
+
+export function formatSalaryRange(min: string, max: string, period: string): string {
+  const cleanMin = min.replace(/[^0-9]/g, "");
+  const cleanMax = max.replace(/[^0-9]/g, "");
+
+  if (!cleanMin && !cleanMax) return "";
+
+  const periodLabel = period === "month" ? "month" : "year";
+
+  if (cleanMin && cleanMax) {
+    return `$${Number(cleanMin).toLocaleString()} - $${Number(cleanMax).toLocaleString()} / ${periodLabel}`;
+  }
+  if (cleanMin) {
+    return `From $${Number(cleanMin).toLocaleString()} / ${periodLabel}`;
+  }
+  if (cleanMax) {
+    return `Up to $${Number(cleanMax).toLocaleString()} / ${periodLabel}`;
+  }
+  return "";
+}
+
+export function parseSalaryRange(range: string | null): { min: string; max: string; salary_period: "month" | "year" } {
+  const result = { min: "", max: "", salary_period: "month" as "month" | "year" };
+  if (!range) return result;
+
+  const normalized = range.toLowerCase();
+  if (normalized.includes("year")) result.salary_period = "year";
+
+  const digits = range.match(/\d[\d,]*/g);
+  if (digits) {
+    const numbers = digits.map(d => d.replace(/,/g, ""));
+    if (numbers.length >= 2) {
+      result.min = numbers[0];
+      result.max = numbers[1];
+    } else if (numbers.length === 1) {
+      if (normalized.includes("up to")) {
+        result.max = numbers[0];
+      } else {
+        result.min = numbers[0];
+      }
+    }
+  }
+  return result;
+}
 
 export function validateJobPostingForm(
   formData: JobPostingFormData
@@ -201,8 +250,8 @@ export function JobPostingForm({
             <FieldRow>
               <Field label="Primary Location">
                 <Select
-                value={formData.location}
-                onValueChange={(value) => onChange("location", value as string)}
+                  value={formData.location}
+                  onValueChange={(value) => onChange("location", value as string)}
                 >
 
                   <SelectTrigger className="bg-slate-950/50 border-white/10 text-white">
@@ -216,12 +265,46 @@ export function JobPostingForm({
                 </Select>
               </Field>
               <Field label="Salary Range (Optional)">
-                <IconInput
-                  icon={<DollarSign />}
-                  value={formData.salary_range}
-                  onChange={(value) => onChange("salary_range", value)}
-                  placeholder="e.g. $5k - $8k / month"
-                />
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">
+                      $
+                    </span>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={formData.salary_min}
+                      onChange={(e) => onChange("salary_min", e.target.value.replace(/[^0-9]/g, ""))}
+                      placeholder="From"
+                      className="bg-slate-950/50 border-white/10 focus:border-indigo-500/50 pl-6 h-10 text-sm"
+                    />
+                  </div>
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">
+                      $
+                    </span>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      value={formData.salary_max}
+                      onChange={(e) => onChange("salary_max", e.target.value.replace(/[^0-9]/g, ""))}
+                      placeholder="To"
+                      className="bg-slate-950/50 border-white/10 focus:border-indigo-500/50 pl-6 h-10 text-sm"
+                    />
+                  </div>
+                  <Select
+                    value={formData.salary_period}
+                    onValueChange={(value) => onChange("salary_period", value as "month" | "year")}
+                  >
+                    <SelectTrigger className="bg-slate-950/50 border-white/10 text-white w-24 h-10 text-sm shrink-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-white/10 text-white">
+                      <SelectItem value="month">/ month</SelectItem>
+                      <SelectItem value="year">/ year</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </Field>
             </FieldRow>
 
@@ -283,16 +366,15 @@ export function JobPostingForm({
                 id="visa-toggle"
                 type="button"
                 onClick={() => onChange("visa_sponsorship", !formData.visa_sponsorship)}
-                className={`h-6 w-11 rounded-full transition-colors relative shrink-0 ${
-                  formData.visa_sponsorship ? "bg-indigo-500" : "bg-slate-700"
-                }`}
+                className={`h-6 w-11 rounded-full transition-colors relative shrink-0 ${formData.visa_sponsorship ? "bg-indigo-500" : "bg-slate-700"
+                  }`}
               >
                 <span
                   className="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform"
                   style={{
                     transform: formData.visa_sponsorship
-                      ? "translateX(22px)"
-                      : "translateX(2px)",
+                      ? "translateX(2px)"
+                      : "translateX(-18px)",
                   }}
                 />
               </button>
@@ -313,11 +395,10 @@ export function JobPostingForm({
               onChange={(event) => onChange("description", event.target.value)}
               placeholder="Share details about the role, tech stack, and what makes your team special..."
               rows={10}
-              className={`bg-slate-950/50 focus:border-indigo-500/50 resize-none leading-relaxed text-white transition-colors ${
-                errors.description
+              className={`bg-slate-950/50 focus:border-indigo-500/50 resize-none leading-relaxed text-white transition-colors ${errors.description
                   ? "border-red-500/60 bg-red-500/5 placeholder:text-red-400/40"
                   : "border-white/10"
-              }`}
+                }`}
             />
             {errors.description && (
               <p className="text-xs text-red-400 mt-1">{errors.description}</p>
@@ -327,52 +408,48 @@ export function JobPostingForm({
           <div className="border-t border-white/5" />
 
           <div className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {(["url", "greenhouse", "lever"] as AtsType[]).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => onChange("ats_type", type)}
-                  className={`p-4 rounded-2xl border transition-all text-left flex flex-col gap-3 ${
-                    formData.ats_type === type
-                      ? "bg-indigo-500/10 border-indigo-500 ring-1 ring-indigo-500"
-                      : "bg-slate-950/50 border-white/10 hover:border-white/20"
-                  }`}
-                >
-                  <div
-                    className={`h-8 w-8 rounded-lg flex items-center justify-center ${
-                      formData.ats_type === type
-                        ? "bg-indigo-500 text-white"
-                        : "bg-slate-800 text-slate-400"
-                    }`}
-                  >
-                    {type === "url" ? (
-                      <Globe className="h-4 w-4" />
-                    ) : (
-                      <Settings className="h-4 w-4" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold capitalize">{type}</p>
-                    <p className="text-[10px] text-slate-500">
-                      {type === "url" ? "Standard web link" : `${type} API sync`}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-
             {formData.ats_type === "url" ? (
               <Field label="External Application URL" required error={errors.ats_fallback_url}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {(["url", "greenhouse", "lever"] as AtsType[]).map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => onChange("ats_type", type)}
+                      className={`p-4 rounded-2xl border transition-all text-left flex flex-col gap-3 ${formData.ats_type === type
+                          ? "bg-indigo-500/10 border-indigo-500 ring-1 ring-indigo-500"
+                          : "bg-slate-950/50 border-white/10 hover:border-white/20"
+                        }`}
+                    >
+                      <div
+                        className={`h-8 w-8 rounded-lg flex items-center justify-center ${formData.ats_type === type
+                            ? "bg-indigo-500 text-white"
+                            : "bg-slate-800 text-slate-400"
+                          }`}
+                      >
+                        {type === "url" ? (
+                          <Globe className="h-4 w-4" />
+                        ) : (
+                          <Settings className="h-4 w-4" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold capitalize">{type}</p>
+                        <p className="text-[10px] text-slate-500">
+                          {type === "url" ? "Standard web link" : `${type} API sync`}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
                 <Input
                   value={formData.ats_fallback_url}
                   onChange={(event) => onChange("ats_fallback_url", event.target.value)}
                   placeholder="https://company.com/careers/jobs/123"
-                  className={`bg-slate-950/50 focus:border-indigo-500/50 transition-colors ${
-                    errors.ats_fallback_url
+                  className={`bg-slate-950/50 focus:border-indigo-500/50 transition-colors ${errors.ats_fallback_url
                       ? "border-red-500/60 bg-red-500/5 placeholder:text-red-400/40"
                       : "border-white/10"
-                  }`}
+                    }`}
                 />
               </Field>
             ) : (
@@ -435,9 +512,9 @@ export function JobPostingForm({
                   <span className="flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5" /> {formData.location}
                   </span>
-                  {formData.salary_range && (
+                  {formatSalaryRange(formData.salary_min, formData.salary_max, formData.salary_period) && (
                     <span className="flex items-center gap-1.5">
-                      <DollarSign className="h-3.5 w-3.5" /> {formData.salary_range}
+                      <DollarSign className="h-3.5 w-3.5" /> {formatSalaryRange(formData.salary_min, formData.salary_max, formData.salary_period)}
                     </span>
                   )}
                   <span className="flex items-center gap-1.5">
@@ -476,27 +553,7 @@ export function JobPostingForm({
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 pb-12">
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            {onDelete && (
-              <Button
-                variant="ghost"
-                onClick={onDelete}
-                className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex-1 sm:flex-initial"
-              >
-                Delete Listing
-              </Button>
-            )}
-            {onPause && (
-              <Button
-                variant="outline"
-                onClick={onPause}
-                className="border-white/10 text-white hover:bg-white/5 flex-1 sm:flex-initial"
-              >
-                {isActive ? "Pause Listing" : "Activate Listing"}
-              </Button>
-            )}
-          </div>
+        <div className="flex flex-col sm:flex-row justify-end gap-4 pt-4 pb-12">
           <Button
             onClick={onSubmit}
             disabled={submitting}
@@ -557,9 +614,8 @@ function IconInput({
   return (
     <div className="relative">
       <span
-        className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 [&>svg]:h-4 [&>svg]:w-4 ${
-          error ? "text-red-400/60" : "text-slate-500"
-        }`}
+        className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 [&>svg]:h-4 [&>svg]:w-4 ${error ? "text-red-400/60" : "text-slate-500"
+          }`}
       >
         {icon}
       </span>
@@ -567,11 +623,10 @@ function IconInput({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className={`bg-slate-950/50 pl-10 focus:border-indigo-500/50 transition-colors ${
-          error
+        className={`bg-slate-950/50 pl-10 focus:border-indigo-500/50 transition-colors ${error
             ? "border-red-500/60 bg-red-500/5 placeholder:text-red-400/40"
             : "border-white/10"
-        }`}
+          }`}
       />
     </div>
   );

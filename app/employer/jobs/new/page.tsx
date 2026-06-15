@@ -9,6 +9,7 @@ import {
   emptyJobPostingFormData,
   parseJobTags,
   validateJobPostingForm,
+  formatSalaryRange,
   type JobPostingFormData,
   type JobPostingFormErrors,
 } from "@/components/employer/JobPostingForm";
@@ -101,7 +102,7 @@ export default function NewJobPage() {
         role: formData.role,
         location: formData.location,
         division: formData.division || null,
-        salary_range: formData.salary_range || null,
+        salary_range: formatSalaryRange(formData.salary_min, formData.salary_max, formData.salary_period) || null,
         description: formData.description || null,
         visa_sponsorship: formData.visa_sponsorship,
         ats_type: formData.ats_type,
