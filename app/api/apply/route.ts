@@ -110,6 +110,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       grad_month_year: p.grad_month_year ?? null,
       major: p.major ?? null,
       work_authorized: workAuthorized,
+      // Phase 1 smart form fill fields
+      website_url: p.website_url ?? null,
+      degree_type: p.degree_type ?? null,
+      current_city: p.current_city ?? null,
+      availability_date: p.availability_date ?? null,
+      notice_period: p.notice_period ?? null,
+      years_experience: p.years_experience ?? null,
+      expected_salary_sgd: p.expected_salary_sgd ?? null,
+      expected_salary_hkd: p.expected_salary_hkd ?? null,
+      gender: p.gender ?? null,
+      ethnicity: p.ethnicity ?? null,
+      disability_status: p.disability_status ?? null,
+      veteran_status: p.veteran_status ?? null,
+      referral_source: p.referral_source ?? null,
+      cover_letter_default: p.cover_letter_default ?? null,
     };
 
     if (result.kind === "redirect") {

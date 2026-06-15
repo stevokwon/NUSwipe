@@ -13,8 +13,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 
 // ── Step configuration ────────────────────────────────────────────────────────
-const STEPS = ["Personal Info", "Location Context", "Academic", "Resume"] as const;
-type Step = 0 | 1 | 2 | 3;
+const STEPS = [
+  "Personal Info",
+  "Location Context",
+  "Academic",
+  "Availability",
+  "Compensation & Identity",
+  "Resume",
+] as const;
+type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
 interface Props {
   profile: Profile;
@@ -31,43 +38,73 @@ export function ProfileForm({ profile, userId }: Props) {
 
   // Form state — pre-fill with existing profile data
   const [form, setForm] = useState({
+    // Personal
     first_name: profile.first_name ?? "",
     last_name: profile.last_name ?? "",
     preferred_name: profile.preferred_name ?? "",
     phone_country_code: profile.phone_country_code ?? "+65",
     phone_number: profile.phone_number ?? "",
+    linkedin_url: profile.linkedin_url ?? "",
+    website_url: profile.website_url ?? "",
+    // Location
     sg_residency: profile.sg_residency ?? "",
     ns_status: profile.ns_status ?? "",
     sg_university: profile.sg_university ?? "",
     hk_residency: profile.hk_residency ?? "",
     hk_university: profile.hk_university ?? "",
+    // Academic
+    degree_type: profile.degree_type ?? "",
     major: profile.major ?? "",
     minor: profile.minor ?? "",
     gpa: profile.gpa ?? "",
     grad_month_year: profile.grad_month_year ?? "",
-    linkedin_url: profile.linkedin_url ?? "",
-    resume_url: profile.resume_url ?? "",
     target_role: profile.target_role ?? "",
+    // Availability
+    current_city: profile.current_city ?? "",
+    availability_date: profile.availability_date ?? "",
+    notice_period: profile.notice_period ?? "",
+    years_experience: profile.years_experience ?? "",
+    // Compensation
+    expected_salary_sgd: profile.expected_salary_sgd?.toString() ?? "",
+    expected_salary_hkd: profile.expected_salary_hkd?.toString() ?? "",
+    open_to_negotiation: profile.open_to_negotiation ?? true,
+    // Identity / EEO
+    gender: profile.gender ?? "",
+    ethnicity: profile.ethnicity ?? "",
+    disability_status: profile.disability_status ?? "",
+    veteran_status: profile.veteran_status ?? "",
+    // Screening
+    referral_source: profile.referral_source ?? "",
+    cover_letter_default: profile.cover_letter_default ?? "",
+    // Resume
+    resume_url: profile.resume_url ?? "",
   });
 
+  // Array fields
   const [skills, setSkills] = useState<string[]>(profile.skills ?? []);
   const [skillInput, setSkillInput] = useState("");
+  const [preferredWorkType, setPreferredWorkType] = useState<string[]>(
+    profile.preferred_work_type ?? []
+  );
+  const [preferredLocation, setPreferredLocation] = useState<string[]>(
+    profile.preferred_location ?? []
+  );
 
-  function update(key: keyof typeof form, value: string) {
+  function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  function toggleArrayItem(arr: string[], setArr: (v: string[]) => void, item: string) {
+    setArr(arr.includes(item) ? arr.filter((x) => x !== item) : [...arr, item]);
+  }
+
+  // ── Skills input ───────────────────────────────────────────────────────────
   function addSkillsFromInput(raw: string) {
-    const tokens = raw
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
+    const tokens = raw.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
     if (tokens.length === 0) return;
     setSkills((prev) => {
       const next = [...prev];
-      for (const t of tokens) {
-        if (!next.includes(t)) next.push(t);
-      }
+      for (const t of tokens) if (!next.includes(t)) next.push(t);
       return next;
     });
     setSkillInput("");
@@ -105,8 +142,7 @@ export function ProfileForm({ profile, userId }: Props) {
 
     if (error) {
       const hint =
-        error.message.includes("Bucket not found") ||
-        error.message.includes("bucket")
+        error.message.includes("Bucket not found") || error.message.includes("bucket")
           ? ' — create a public bucket named "resumes" in Supabase Storage first'
           : "";
       toast.error("Upload failed: " + error.message + hint);
@@ -125,10 +161,20 @@ export function ProfileForm({ profile, userId }: Props) {
     setSaving(true);
     const supabase = createClient();
 
+    const payload = {
+      ...form,
+      skills,
+      preferred_work_type: preferredWorkType,
+      preferred_location: preferredLocation,
+      expected_salary_sgd: form.expected_salary_sgd ? parseInt(form.expected_salary_sgd) : null,
+      expected_salary_hkd: form.expected_salary_hkd ? parseInt(form.expected_salary_hkd) : null,
+      updated_at: new Date().toISOString(),
+    };
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
       .from("candidates")
-      .update({ ...form, skills, updated_at: new Date().toISOString() })
+      .update(payload)
       .eq("id", userId);
 
     if (error) {
@@ -140,8 +186,15 @@ export function ProfileForm({ profile, userId }: Props) {
     toast.success("Profile saved!");
     setSaving(false);
 
-    // If profile is now complete, navigate to swipe
-    const updated: Profile = { ...profile, ...form, skills };
+    const updated: Profile = {
+      ...profile,
+      ...form,
+      skills,
+      preferred_work_type: preferredWorkType,
+      preferred_location: preferredLocation,
+      expected_salary_sgd: form.expected_salary_sgd ? parseInt(form.expected_salary_sgd) : null,
+      expected_salary_hkd: form.expected_salary_hkd ? parseInt(form.expected_salary_hkd) : null,
+    };
     if (isProfileComplete(updated)) {
       router.push("/swipe");
     }
@@ -153,7 +206,7 @@ export function ProfileForm({ profile, userId }: Props) {
     <div className="max-w-lg mx-auto p-4 space-y-6">
       {/* Progress */}
       <div className="space-y-2">
-        <div className="flex justify-between text-sm text-slate-400">
+        <div className="flex justify-between text-xs text-slate-400 flex-wrap gap-y-1">
           {STEPS.map((s, i) => (
             <button
               key={s}
@@ -213,6 +266,9 @@ export function ProfileForm({ profile, userId }: Props) {
                   <SelectItem value="+852">+852 (HK)</SelectItem>
                   <SelectItem value="+60">+60 (MY)</SelectItem>
                   <SelectItem value="+62">+62 (ID)</SelectItem>
+                  <SelectItem value="+91">+91 (IN)</SelectItem>
+                  <SelectItem value="+1">+1 (US/CA)</SelectItem>
+                  <SelectItem value="+44">+44 (UK)</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
@@ -230,6 +286,14 @@ export function ProfileForm({ profile, userId }: Props) {
               value={form.linkedin_url}
               onChange={(e) => update("linkedin_url", e.target.value)}
               placeholder="linkedin.com/in/janedoe"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Portfolio / Website">
+            <Input
+              value={form.website_url}
+              onChange={(e) => update("website_url", e.target.value)}
+              placeholder="github.com/janedoe or janedoe.com"
               className={inputCls}
             />
           </Field>
@@ -252,9 +316,10 @@ export function ProfileForm({ profile, userId }: Props) {
                   <SelectValue placeholder="Select…" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Citizen">Singapore Citizen</SelectItem>
-                  <SelectItem value="Permanent Resident">Permanent Resident</SelectItem>
-                  <SelectItem value="Employment Pass Required">Employment Pass Required</SelectItem>
+                  <SelectItem value="citizen">Singapore Citizen</SelectItem>
+                  <SelectItem value="pr">Permanent Resident</SelectItem>
+                  <SelectItem value="ep">Employment Pass / S Pass</SelectItem>
+                  <SelectItem value="student_pass">Student Pass</SelectItem>
                   <SelectItem value="Not Applicable">Not Applicable</SelectItem>
                 </SelectContent>
               </Select>
@@ -305,8 +370,8 @@ export function ProfileForm({ profile, userId }: Props) {
                   <SelectValue placeholder="Select…" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Permanent Resident">Permanent Resident</SelectItem>
-                  <SelectItem value="IANG Visa Holder">IANG Visa Holder</SelectItem>
+                  <SelectItem value="pr">Permanent Resident</SelectItem>
+                  <SelectItem value="iang">IANG Visa Holder</SelectItem>
                   <SelectItem value="Visa Required">Visa Required</SelectItem>
                   <SelectItem value="Not Applicable">Not Applicable</SelectItem>
                 </SelectContent>
@@ -338,14 +403,33 @@ export function ProfileForm({ profile, userId }: Props) {
       {step === 2 && (
         <fieldset className="space-y-4">
           <legend className="text-lg font-semibold text-white">Academic Details</legend>
-          <Field label="Major" required>
-            <Input
-              value={form.major}
-              onChange={(e) => update("major", e.target.value)}
-              placeholder="Computer Science"
-              className={inputCls}
-            />
-          </Field>
+          <Row>
+            <Field label="Degree Type">
+              <Select
+                value={form.degree_type}
+                onValueChange={(v: string | null) => update("degree_type", v ?? "")}
+              >
+                <SelectTrigger className={inputCls}>
+                  <SelectValue placeholder="Select…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Bachelor's">Bachelor&apos;s</SelectItem>
+                  <SelectItem value="Master's">Master&apos;s</SelectItem>
+                  <SelectItem value="PhD">PhD</SelectItem>
+                  <SelectItem value="Diploma">Diploma</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Major" required>
+              <Input
+                value={form.major}
+                onChange={(e) => update("major", e.target.value)}
+                placeholder="Computer Science"
+                className={inputCls}
+              />
+            </Field>
+          </Row>
           <Field label="Minor / Second Major">
             <Input
               value={form.minor}
@@ -382,11 +466,8 @@ export function ProfileForm({ profile, userId }: Props) {
           </Field>
           <Field label="Skills">
             <div
-              className={`flex flex-wrap gap-1.5 min-h-[42px] rounded-md border px-3 py-2 text-sm cursor-text bg-white/10 border-white/20 focus-within:border-purple-500`}
-              onClick={() => {
-                const el = document.getElementById("skills-input");
-                el?.focus();
-              }}
+              className="flex flex-wrap gap-1.5 min-h-[42px] rounded-md border px-3 py-2 text-sm cursor-text bg-white/10 border-white/20 focus-within:border-purple-500"
+              onClick={() => document.getElementById("skills-input")?.focus()}
             >
               {skills.map((skill) => (
                 <span
@@ -420,8 +501,239 @@ export function ProfileForm({ profile, userId }: Props) {
         </fieldset>
       )}
 
-      {/* ── Step 3: Resume ────────────────────────────────────────────────── */}
+      {/* ── Step 3: Availability ──────────────────────────────────────────── */}
       {step === 3 && (
+        <fieldset className="space-y-4">
+          <legend className="text-lg font-semibold text-white">Availability</legend>
+          <p className="text-sm text-slate-400">
+            Used to auto-answer screening questions like &ldquo;current city&rdquo;, &ldquo;start date&rdquo;, and &ldquo;notice period&rdquo;.
+          </p>
+
+          <Row>
+            <Field label="Current City">
+              <Select
+                value={form.current_city}
+                onValueChange={(v: string | null) => update("current_city", v ?? "")}
+              >
+                <SelectTrigger className={inputCls}>
+                  <SelectValue placeholder="Select…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Singapore">Singapore</SelectItem>
+                  <SelectItem value="Hong Kong">Hong Kong</SelectItem>
+                  <SelectItem value="Kuala Lumpur">Kuala Lumpur</SelectItem>
+                  <SelectItem value="Jakarta">Jakarta</SelectItem>
+                  <SelectItem value="Bangkok">Bangkok</SelectItem>
+                  <SelectItem value="Manila">Manila</SelectItem>
+                  <SelectItem value="Ho Chi Minh City">Ho Chi Minh City</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Notice Period">
+              <Select
+                value={form.notice_period}
+                onValueChange={(v: string | null) => update("notice_period", v ?? "")}
+              >
+                <SelectTrigger className={inputCls}>
+                  <SelectValue placeholder="Select…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Immediate">Immediate</SelectItem>
+                  <SelectItem value="1 week">1 week</SelectItem>
+                  <SelectItem value="2 weeks">2 weeks</SelectItem>
+                  <SelectItem value="1 month">1 month</SelectItem>
+                  <SelectItem value="3 months">3 months</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </Row>
+
+          <Row>
+            <Field label="Earliest Start Date">
+              <Input
+                type="date"
+                value={form.availability_date}
+                onChange={(e) => update("availability_date", e.target.value)}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Years of Experience">
+              <Select
+                value={form.years_experience}
+                onValueChange={(v: string | null) => update("years_experience", v ?? "")}
+              >
+                <SelectTrigger className={inputCls}>
+                  <SelectValue placeholder="Select…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">0 (student / no experience)</SelectItem>
+                  <SelectItem value="<1">Less than 1 year</SelectItem>
+                  <SelectItem value="1-2">1–2 years</SelectItem>
+                  <SelectItem value="3-5">3–5 years</SelectItem>
+                  <SelectItem value="5+">5+ years</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </Row>
+
+          <Field label="Preferred Work Type">
+            <ToggleChips
+              options={["Full-time", "Internship", "Part-time", "Contract"]}
+              selected={preferredWorkType}
+              onToggle={(item) => toggleArrayItem(preferredWorkType, setPreferredWorkType, item)}
+            />
+          </Field>
+
+          <Field label="Preferred Location">
+            <ToggleChips
+              options={["Singapore", "Hong Kong", "Remote", "Open to all"]}
+              selected={preferredLocation}
+              onToggle={(item) => toggleArrayItem(preferredLocation, setPreferredLocation, item)}
+            />
+          </Field>
+        </fieldset>
+      )}
+
+      {/* ── Step 4: Compensation & Identity ──────────────────────────────── */}
+      {step === 4 && (
+        <fieldset className="space-y-5">
+          <legend className="text-lg font-semibold text-white">Compensation & Identity</legend>
+
+          <div className="space-y-4 rounded-xl border border-white/10 p-4">
+            <p className="text-sm font-medium text-slate-300">Compensation</p>
+            <Row>
+              <Field label="Expected Salary (SGD/mo)">
+                <Input
+                  type="number"
+                  value={form.expected_salary_sgd}
+                  onChange={(e) => update("expected_salary_sgd", e.target.value)}
+                  placeholder="3500"
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Expected Salary (HKD/mo)">
+                <Input
+                  type="number"
+                  value={form.expected_salary_hkd}
+                  onChange={(e) => update("expected_salary_hkd", e.target.value)}
+                  placeholder="12000"
+                  className={inputCls}
+                />
+              </Field>
+            </Row>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.open_to_negotiation}
+                onChange={(e) => update("open_to_negotiation", e.target.checked)}
+                className="w-4 h-4 accent-purple-500"
+              />
+              <span className="text-sm text-slate-300">Open to negotiation</span>
+            </label>
+          </div>
+
+          <div className="space-y-4 rounded-xl border border-white/10 p-4">
+            <p className="text-sm font-medium text-slate-300">
+              Identity{" "}
+              <span className="text-xs font-normal text-slate-500">
+                — optional, used only for EEO autofill
+              </span>
+            </p>
+            <Row>
+              <Field label="Gender">
+                <Select
+                  value={form.gender}
+                  onValueChange={(v: string | null) => update("gender", v ?? "")}
+                >
+                  <SelectTrigger className={inputCls}>
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
+                    <SelectItem value="Non-binary">Non-binary</SelectItem>
+                    <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Ethnicity">
+                <Select
+                  value={form.ethnicity}
+                  onValueChange={(v: string | null) => update("ethnicity", v ?? "")}
+                >
+                  <SelectTrigger className={inputCls}>
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Asian">Asian</SelectItem>
+                    <SelectItem value="White / Caucasian">White / Caucasian</SelectItem>
+                    <SelectItem value="Hispanic / Latino">Hispanic / Latino</SelectItem>
+                    <SelectItem value="Black / African American">Black / African American</SelectItem>
+                    <SelectItem value="Middle Eastern">Middle Eastern</SelectItem>
+                    <SelectItem value="Mixed">Mixed</SelectItem>
+                    <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </Row>
+            <Row>
+              <Field label="Disability Status">
+                <Select
+                  value={form.disability_status}
+                  onValueChange={(v: string | null) => update("disability_status", v ?? "")}
+                >
+                  <SelectTrigger className={inputCls}>
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="No">No disability</SelectItem>
+                    <SelectItem value="Yes">Yes</SelectItem>
+                    <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Veteran Status">
+                <Select
+                  value={form.veteran_status}
+                  onValueChange={(v: string | null) => update("veteran_status", v ?? "")}
+                >
+                  <SelectTrigger className={inputCls}>
+                    <SelectValue placeholder="Select…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Not a veteran">Not a veteran</SelectItem>
+                    <SelectItem value="Veteran">Veteran</SelectItem>
+                    <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </Row>
+            <Field label="How did you hear about us?">
+              <Select
+                value={form.referral_source}
+                onValueChange={(v: string | null) => update("referral_source", v ?? "")}
+              >
+                <SelectTrigger className={inputCls}>
+                  <SelectValue placeholder="Select…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NUSwipe">NUSwipe</SelectItem>
+                  <SelectItem value="LinkedIn">LinkedIn</SelectItem>
+                  <SelectItem value="University career fair">University career fair</SelectItem>
+                  <SelectItem value="Company website">Company website</SelectItem>
+                  <SelectItem value="Friend / referral">Friend / referral</SelectItem>
+                  <SelectItem value="Job board">Job board (Indeed, Glassdoor, etc.)</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+        </fieldset>
+      )}
+
+      {/* ── Step 5: Resume ────────────────────────────────────────────────── */}
+      {step === 5 && (
         <fieldset className="space-y-4">
           <legend className="text-lg font-semibold text-white">Resume</legend>
           <p className="text-sm text-slate-400">
@@ -443,10 +755,7 @@ export function ProfileForm({ profile, userId }: Props) {
                 <button
                   type="button"
                   className="text-xs text-purple-400 hover:underline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    fileRef.current?.click();
-                  }}
+                  onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
                 >
                   Replace
                 </button>
@@ -469,6 +778,21 @@ export function ProfileForm({ profile, userId }: Props) {
               disabled={uploading}
             />
           </div>
+
+          <Field label="Default Cover Letter Paragraph">
+            <textarea
+              value={form.cover_letter_default}
+              onChange={(e) => update("cover_letter_default", e.target.value)}
+              placeholder="I am a Computer Science student at NUS passionate about building products that solve real problems. I'm excited to bring my skills in React and Python to…"
+              rows={4}
+              maxLength={600}
+              className={`w-full rounded-md border px-3 py-2 text-sm resize-none ${inputCls}`}
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Used as a fallback when applications ask for a cover letter. Keep it to ~2–3 sentences.{" "}
+              {form.cover_letter_default.length}/600
+            </p>
+          </Field>
         </fieldset>
       )}
 
@@ -528,6 +852,35 @@ function Field({
         {required && <span className="text-purple-400 ml-0.5">*</span>}
       </Label>
       {children}
+    </div>
+  );
+}
+
+function ToggleChips({
+  options,
+  selected,
+  onToggle,
+}: {
+  options: string[];
+  selected: string[];
+  onToggle: (item: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2 mt-1">
+      {options.map((opt) => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onToggle(opt)}
+          className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+            selected.includes(opt)
+              ? "bg-purple-600/40 border-purple-500 text-purple-200"
+              : "bg-white/5 border-white/20 text-slate-400 hover:border-white/40"
+          }`}
+        >
+          {opt}
+        </button>
+      ))}
     </div>
   );
 }

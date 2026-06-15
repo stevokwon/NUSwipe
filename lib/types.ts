@@ -81,6 +81,28 @@ export interface Candidate {
   // Sprint 3
   skills: string[];
   target_role: string | null;
+  // Education (extended)
+  degree_type: string | null;
+  website_url: string | null;
+  // Availability & work preferences
+  current_city: string | null;
+  availability_date: string | null;
+  notice_period: string | null;
+  years_experience: string | null;
+  preferred_work_type: string[];
+  preferred_location: string[];
+  // Compensation
+  expected_salary_sgd: number | null;
+  expected_salary_hkd: number | null;
+  open_to_negotiation: boolean | null;
+  // EEO / Diversity
+  gender: string | null;
+  ethnicity: string | null;
+  disability_status: string | null;
+  veteran_status: string | null;
+  // Additional screening
+  referral_source: string | null;
+  cover_letter_default: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -16,6 +16,20 @@ export interface ApplyPayload {
   major?: string | null;
   website_url?: string | null;
   work_authorized?: boolean;
+  // Phase 1 smart form fill
+  degree_type?: string | null;
+  current_city?: string | null;
+  availability_date?: string | null;
+  notice_period?: string | null;
+  years_experience?: string | null;
+  expected_salary_sgd?: number | null;
+  expected_salary_hkd?: number | null;
+  gender?: string | null;
+  ethnicity?: string | null;
+  disability_status?: string | null;
+  veteran_status?: string | null;
+  referral_source?: string | null;
+  cover_letter_default?: string | null;
 }
 
 function setReactInputValue(el: HTMLInputElement, value: string): void {
@@ -172,6 +186,147 @@ export function fillLeverForm(payload: ApplyPayload): void {
       ]),
       payload.website_url
     );
+  }
+
+  // Current location / city
+  if (payload.current_city) {
+    fillField(
+      findInput([
+        () => findByLabelText("current location"),
+        () => findByLabelText("current city"),
+        () => findByLabelText("city"),
+        () => findByLabelText("location"),
+        () => document.querySelector<HTMLInputElement>('input[name*="location" i], input[name*="city" i]'),
+      ]),
+      payload.current_city
+    );
+  }
+
+  // Availability / start date
+  if (payload.availability_date) {
+    fillField(
+      findInput([
+        () => findByLabelText("start date"),
+        () => findByLabelText("available"),
+        () => findByLabelText("earliest start"),
+        () => document.querySelector<HTMLInputElement>('input[name*="start_date" i], input[name*="available" i]'),
+      ]),
+      payload.availability_date
+    );
+  }
+
+  // Notice period
+  if (payload.notice_period) {
+    fillField(
+      findInput([
+        () => findByLabelText("notice period"),
+        () => findByLabelText("notice"),
+        () => document.querySelector<HTMLInputElement>('input[name*="notice" i]'),
+      ]),
+      payload.notice_period
+    );
+    // Also try select elements
+    const noticeSel = document.querySelector<HTMLSelectElement>('select[name*="notice" i]');
+    if (noticeSel) {
+      const opt = Array.from(noticeSel.options).find((o) =>
+        o.text.toLowerCase().includes(payload.notice_period!.toLowerCase())
+      );
+      if (opt) { noticeSel.value = opt.value; noticeSel.dispatchEvent(new Event("change", { bubbles: true })); }
+    }
+  }
+
+  // Years of experience
+  if (payload.years_experience) {
+    fillField(
+      findInput([
+        () => findByLabelText("years of experience"),
+        () => findByLabelText("experience"),
+        () => document.querySelector<HTMLInputElement>('input[name*="experience" i]'),
+      ]),
+      payload.years_experience
+    );
+  }
+
+  // Expected salary — prefer SGD for SG jobs, HKD for HK jobs
+  const expectedSalary = payload.expected_salary_sgd ?? payload.expected_salary_hkd;
+  if (expectedSalary) {
+    fillField(
+      findInput([
+        () => findByLabelText("expected salary"),
+        () => findByLabelText("salary expectation"),
+        () => findByLabelText("desired salary"),
+        () => document.querySelector<HTMLInputElement>('input[name*="salary" i]'),
+      ]),
+      expectedSalary.toString()
+    );
+  }
+
+  // How did you hear about us
+  if (payload.referral_source) {
+    fillField(
+      findInput([
+        () => findByLabelText("how did you hear"),
+        () => findByLabelText("how did you find"),
+        () => findByLabelText("referral"),
+        () => document.querySelector<HTMLInputElement>('input[name*="referral" i], input[name*="source" i]'),
+      ]),
+      payload.referral_source
+    );
+    // Try select too
+    const refSels = document.querySelectorAll<HTMLSelectElement>("select");
+    for (const sel of refSels) {
+      const lbl = document.querySelector<HTMLLabelElement>(`label[for="${sel.id}"]`);
+      if (lbl?.textContent?.toLowerCase().includes("hear about")) {
+        const opt = Array.from(sel.options).find((o) =>
+          o.text.toLowerCase().includes((payload.referral_source ?? "").toLowerCase())
+        );
+        if (opt) { sel.value = opt.value; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+      }
+    }
+  }
+
+  // Cover letter / additional info text areas
+  if (payload.cover_letter_default) {
+    const textareas = document.querySelectorAll<HTMLTextAreaElement>("textarea");
+    for (const ta of textareas) {
+      const id = ta.id || ta.name || "";
+      const label = document.querySelector<HTMLLabelElement>(`label[for="${ta.id}"]`);
+      const labelText = (label?.textContent ?? "").toLowerCase();
+      if (
+        labelText.includes("cover letter") ||
+        labelText.includes("additional info") ||
+        labelText.includes("tell us") ||
+        id.toLowerCase().includes("cover") ||
+        id.toLowerCase().includes("additional")
+      ) {
+        const nativeSetter = Object.getOwnPropertyDescriptor(
+          window.HTMLTextAreaElement.prototype, "value"
+        )?.set;
+        nativeSetter?.call(ta, payload.cover_letter_default);
+        ta.dispatchEvent(new Event("input", { bubbles: true }));
+        ta.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+  }
+
+  // EEO selects — gender, ethnicity, disability, veteran
+  if (payload.gender || payload.ethnicity || payload.disability_status || payload.veteran_status) {
+    const eeoSelects = document.querySelectorAll<HTMLSelectElement>("select");
+    for (const sel of eeoSelects) {
+      const lbl = document.querySelector<HTMLLabelElement>(`label[for="${sel.id}"]`);
+      const lt = (lbl?.textContent ?? "").toLowerCase();
+      let targetValue: string | null = null;
+      if ((lt.includes("gender") || lt.includes("sex")) && payload.gender) targetValue = payload.gender;
+      else if ((lt.includes("race") || lt.includes("ethnic")) && payload.ethnicity) targetValue = payload.ethnicity;
+      else if (lt.includes("disab") && payload.disability_status) targetValue = payload.disability_status;
+      else if (lt.includes("veteran") && payload.veteran_status) targetValue = payload.veteran_status;
+      if (targetValue) {
+        const opt = Array.from(sel.options).find((o) =>
+          o.text.toLowerCase().includes(targetValue!.toLowerCase())
+        );
+        if (opt) { sel.value = opt.value; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+      }
+    }
   }
 
   // Work authorization — try to select "Yes" on any auth-related select/checkbox
