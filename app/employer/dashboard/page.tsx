@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Briefcase, Users, FileText, CheckCircle, Clock, ExternalLink, Plus, RefreshCw, Save } from "lucide-react";
+import { Briefcase, Users, FileText, CheckCircle, Clock, ExternalLink, Plus, RefreshCw, Save, GraduationCap, Microscope, BarChart3, Calendar, Mail, Phone } from "lucide-react";
 import { JobActionsMenu } from "@/components/employer/JobActionsMenu";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 
@@ -347,6 +347,16 @@ export default function EmployerDashboard() {
           >
             Job Listings ({jobs.length})
           </button>
+          <button
+            onClick={() => setActiveTab("applicants")}
+            className={`pb-2.5 font-semibold text-sm transition-colors border-b-2 px-1 ${
+              activeTab === "applicants"
+                ? "border-indigo-500 text-white"
+                : "border-transparent text-slate-400 hover:text-white"
+            }`}
+          >
+            Manage Applications ({applications.length})
+          </button>
         </div>
 
         {/* Tab 1: Job Listings */}
@@ -526,12 +536,12 @@ export default function EmployerDashboard() {
                             </Badge>
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-y-2 gap-x-4 text-xs text-slate-400">
-                            <div>🎓 <span className="text-slate-300 font-medium">{university}</span></div>
-                            <div>🔬 Major: <span className="text-slate-300">{candidate.major || "Not specified"}</span></div>
-                            <div>📊 GPA: <span className="text-slate-300">{candidate.gpa || "N/A"}</span></div>
-                            <div>📅 Grad Date: <span className="text-slate-300">{candidate.grad_month_year || "N/A"}</span></div>
-                            <div>✉️ Email: <a href={`mailto:${candidate.email}`} className="text-indigo-400 hover:underline">{candidate.email}</a></div>
-                            <div>📞 Phone: <span className="text-slate-300">{candidate.phone_country_code || ""} {candidate.phone_number || "N/A"}</span></div>
+                            <div className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5 text-indigo-400" /> <span className="text-slate-300 font-medium">{university}</span></div>
+                            <div className="flex items-center gap-1.5"><Microscope className="h-3.5 w-3.5 text-indigo-400" /> Major: <span className="text-slate-300">{candidate.major || "Not specified"}</span></div>
+                            <div className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5 text-indigo-400" /> GPA: <span className="text-slate-300">{candidate.gpa || "N/A"}</span></div>
+                            <div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-indigo-400" /> Grad Date: <span className="text-slate-300">{candidate.grad_month_year || "N/A"}</span></div>
+                            <div className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-indigo-400" /> Email: <a href={`mailto:${candidate.email}`} className="text-indigo-400 hover:underline">{candidate.email}</a></div>
+                            <div className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-indigo-400" /> Phone: <span className="text-slate-300">{candidate.phone_country_code || ""} {candidate.phone_number || "N/A"}</span></div>
                           </div>
 
                           <div className="flex items-center gap-3 pt-2">
@@ -542,7 +552,7 @@ export default function EmployerDashboard() {
                                 rel="noreferrer"
                                 className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-medium hover:underline bg-emerald-950/30 px-2.5 py-1 rounded-lg border border-emerald-900/40"
                               >
-                                📄 View Resume <ExternalLink className="h-3 w-3" />
+                                <FileText className="h-3.5 w-3.5" /> View Resume <ExternalLink className="h-3 w-3" />
                               </a>
                             )}
                             {candidate.linkedin_url && (
@@ -552,7 +562,7 @@ export default function EmployerDashboard() {
                                 rel="noreferrer"
                                 className="inline-flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300 font-medium hover:underline bg-sky-950/30 px-2.5 py-1 rounded-lg border border-sky-900/40"
                               >
-                                🔗 LinkedIn <ExternalLink className="h-3 w-3" />
+                                <ExternalLink className="h-3.5 w-3.5" /> LinkedIn <ExternalLink className="h-3 w-3" />
                               </a>
                             )}
                           </div>
@@ -594,55 +604,6 @@ export default function EmployerDashboard() {
           </div>
         )}
       </main>
-    </div>
-  );
-}
-
-// Sub-component to manage individual note updates cleanly with local state
-interface NotesFieldProps {
-  appId: string;
-  initialNotes: string;
-  onSave: (appId: string, notes: string) => Promise<void>;
-}
-
-function NotesField({ appId, initialNotes, onSave }: NotesFieldProps) {
-  const [notes, setNotes] = useState(initialNotes);
-  const [dirty, setDirty] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    setNotes(initialNotes);
-    setDirty(false);
-  }, [initialNotes]);
-
-  async function handleSave() {
-    setSaving(true);
-    await onSave(appId, notes);
-    setSaving(false);
-    setDirty(false);
-  }
-
-  return (
-    <div className="flex gap-2">
-      <Input
-        value={notes}
-        onChange={(e) => {
-          setNotes(e.target.value);
-          setDirty(true);
-        }}
-        placeholder="Add interview feedback, notes..."
-        className="bg-slate-900 border-white/10 text-white text-xs h-8 flex-1 placeholder:text-slate-500"
-      />
-      {dirty && (
-        <Button
-          size="sm"
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs h-8 px-2 flex items-center justify-center"
-        >
-          {saving ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-        </Button>
-      )}
     </div>
   );
 }
