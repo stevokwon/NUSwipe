@@ -333,11 +333,11 @@ export default function JobApplicantsPage() {
         </div>
 
         {/* Filters Bar */}
-        <div className="flex flex-col sm:flex-row gap-3 bg-slate-900/30 p-4 border border-white/10 rounded-xl">
-          <div className="w-full sm:w-48 space-y-1">
+        <div className="flex flex-col sm:flex-row gap-3 bg-slate-900/30 p-4 border border-white/10 rounded-xl items-start sm:items-center">
+          <div className="w-full sm:w-48 space-y-1 flex-shrink-0">
             <Label className="text-slate-400 text-xs">Filter by Status</Label>
             <Select value={selectedStatusFilter} onValueChange={(val) => setSelectedStatusFilter(val || "all")}>
-              <SelectTrigger className="bg-slate-900 border-white/10 text-white">
+              <SelectTrigger className="bg-slate-900 border-white/10 text-white w-full">
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10 text-white">
@@ -351,7 +351,7 @@ export default function JobApplicantsPage() {
             </Select>
           </div>
           <div className="flex-1" />
-          <div className="text-right text-xs text-slate-400 pt-6">
+          <div className="text-right text-xs text-slate-400 sm:whitespace-nowrap">
             Showing <span className="text-white font-semibold">{filteredApps.length}</span> of <span className="text-white font-semibold">{totalApplicants}</span> applicants
           </div>
         </div>
