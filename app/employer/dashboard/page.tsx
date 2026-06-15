@@ -3,22 +3,15 @@
 import { useEffect, useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Job, Profile, Application, AtsType, Employer, Candidate } from "@/lib/types";
+import type { Job, Employer, Application } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Briefcase, Users, FileText, CheckCircle, Clock, ExternalLink, Plus, RefreshCw, Save, GraduationCap, Microscope, BarChart3, Calendar, Mail, Phone } from "lucide-react";
+import { Briefcase, Users, FileText, CheckCircle, Clock, Plus, RefreshCw } from "lucide-react";
 import { JobActionsMenu } from "@/components/employer/JobActionsMenu";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
-
-interface ApplicationWithCandidate extends Application {
-  jobs: Job;
-  candidates: Candidate;
-}
 
 export default function EmployerDashboard() {
   const router = useRouter();
@@ -30,13 +23,10 @@ export default function EmployerDashboard() {
 
   // Core Data State
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [applications, setApplications] = useState<ApplicationWithCandidate[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
 
-  // Navigation / Filter State
-  const [activeTab, setActiveTab] = useState<"jobs" | "applicants">("jobs");
+  // Filter State
   const [showInactiveJobs, setShowInactiveJobs] = useState(false);
-  const [selectedJobFilter, setSelectedJobFilter] = useState<string>("all");
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("all");
 
   // Load dashboard data
   async function loadData() {
@@ -74,58 +64,21 @@ export default function EmployerDashboard() {
         .order("created_at", { ascending: false });
 
       if (jobsError) {
-        console.error("Jobs fetch error object:", JSON.stringify(jobsError, null, 2));
-        console.error("Jobs fetch error message:", jobsError.message);
         throw new Error(jobsError.message || "Failed to fetch jobs");
       }
       setJobs(jobsData as Job[]);
 
-      // Fetch applications (Inner join on jobs to filter by employer)
+      // Fetch applications counts (lite fetch for stats)
       const { data: appsData, error: appsError } = await supabase
         .from("applications")
-        .select(`
-          *,
-          jobs:job_id (
-            id,
-            role,
-            company,
-            location,
-            division,
-            salary_range,
-            description,
-            tags,
-            ats_type,
-            filled_spots,
-            total_spots,
-            visa_sponsorship,
-            logo_url,
-            active,
-            posted_by
-          ),
-          candidates:user_id (
-            id,
-            email,
-            first_name,
-            last_name,
-            phone_number,
-            phone_country_code,
-            major,
-            gpa,
-            sg_university,
-            hk_university,
-            grad_month_year,
-            resume_url,
-            linkedin_url
-          )
-        `)
-        .eq("jobs.posted_by", user.id)
-        .order("applied_at", { ascending: false });
+        .select("id, status, job_id")
+        .in("job_id", (jobsData as Job[]).map(j => j.id));
 
       if (appsError) {
         console.error("Applications fetch error:", appsError);
-        throw new Error("Failed to fetch applications");
+      } else {
+        setApplications(appsData as Application[]);
       }
-      setApplications(appsData as unknown as ApplicationWithCandidate[]);
     } catch (err: any) {
       const errorMessage = err.message || "Failed to load dashboard data";
       toast.error(errorMessage);
@@ -146,40 +99,6 @@ export default function EmployerDashboard() {
       router.push("/employer/login");
       router.refresh();
     });
-  }
-
-  // Update candidate application status
-  async function updateApplicationStatus(appId: string, status: string) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
-        .from("applications")
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq("id", appId);
-
-      if (error) throw error;
-      toast.success(`Application status updated to ${status}`);
-      loadData();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update application status");
-    }
-  }
-
-  // Update application notes
-  async function saveApplicationNotes(appId: string, notes: string) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
-        .from("applications")
-        .update({ notes, updated_at: new Date().toISOString() })
-        .eq("id", appId);
-
-      if (error) throw error;
-      toast.success("Notes saved successfully");
-      loadData();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save notes");
-    }
   }
 
   async function togglePauseJob(job: Job) {
@@ -223,13 +142,6 @@ export default function EmployerDashboard() {
     acc[app.job_id] = (acc[app.job_id] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-
-  // Filtered applications
-  const filteredApps = applications.filter((app) => {
-    const jobMatch = selectedJobFilter === "all" || app.job_id === selectedJobFilter;
-    const statusMatch = selectedStatusFilter === "all" || app.status === selectedStatusFilter;
-    return jobMatch && statusMatch;
-  });
 
   if (loading) {
     return (
@@ -292,12 +204,12 @@ export default function EmployerDashboard() {
 
           <Card className="bg-slate-900/50 border-white/10 text-white">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-medium text-slate-400">Total Swipes</CardTitle>
+              <CardTitle className="text-xs font-medium text-slate-400">Total Applicants</CardTitle>
               <Users className="h-4 w-4 text-emerald-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalApplicants}</div>
-              <p className="text-[10px] text-slate-400 mt-1">candidates applied</p>
+              <p className="text-[10px] text-slate-400 mt-1">across all jobs</p>
             </CardContent>
           </Card>
 
@@ -335,67 +247,42 @@ export default function EmployerDashboard() {
           </Card>
         </div>
 
-        {/* Tab Selection */}
-        <div className="flex border-b border-white/10 gap-4">
-          <button
-            onClick={() => setActiveTab("jobs")}
-            className={`pb-2.5 font-semibold text-sm transition-colors border-b-2 px-1 ${
-              activeTab === "jobs"
-                ? "border-indigo-500 text-white"
-                : "border-transparent text-slate-400 hover:text-white"
-            }`}
-          >
-            Job Listings ({jobs.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("applicants")}
-            className={`pb-2.5 font-semibold text-sm transition-colors border-b-2 px-1 ${
-              activeTab === "applicants"
-                ? "border-indigo-500 text-white"
-                : "border-transparent text-slate-400 hover:text-white"
-            }`}
-          >
-            Manage Applications ({applications.length})
-          </button>
-        </div>
-
-        {/* Tab 1: Job Listings */}
-        {activeTab === "jobs" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-400">Manage Postings</h2>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="showInactive"
-                  checked={showInactiveJobs}
-                  onChange={(e) => setShowInactiveJobs(e.target.checked)}
-                  className="rounded border-white/10 bg-slate-900 text-indigo-600 focus:ring-indigo-500"
-                />
-                <Label htmlFor="showInactive" className="text-sm text-slate-400 cursor-pointer">
-                  Show Inactive Jobs
-                </Label>
-              </div>
+        {/* Listings Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+            <h2 className="font-semibold text-sm text-white">Manage Job Openings ({jobs.length})</h2>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="showInactive"
+                checked={showInactiveJobs}
+                onChange={(e) => setShowInactiveJobs(e.target.checked)}
+                className="rounded border-white/10 bg-slate-900 text-indigo-600 focus:ring-indigo-500"
+              />
+              <Label htmlFor="showInactive" className="text-sm text-slate-400 cursor-pointer">
+                Show Inactive Jobs
+              </Label>
             </div>
+          </div>
 
-            {jobs.length === 0 ? (
-              <div className="text-center py-12 bg-slate-900/30 border border-dashed border-white/10 rounded-2xl">
-                <Briefcase className="h-10 w-10 text-slate-500 mx-auto mb-3" />
-                <p className="font-semibold text-slate-300">No Job Openings Yet</p>
-                <p className="text-xs text-slate-500 max-w-xs mx-auto mt-1">
-                  You haven't posted any job openings. Post a new opening to start matching with candidates!
-                </p>
-                <Button onClick={() => router.push("/employer/jobs/new")} className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs">
-                  Create First Posting
-                </Button>
-              </div>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-4">
-                {jobs
-                  .filter((job) => showInactiveJobs || job.active)
-                  .map((job) => {
-                    const count = applicantCounts[job.id] || 0;
-                    return (
+          {jobs.length === 0 ? (
+            <div className="text-center py-12 bg-slate-900/30 border border-dashed border-white/10 rounded-2xl">
+              <Briefcase className="h-10 w-10 text-slate-500 mx-auto mb-3" />
+              <p className="font-semibold text-slate-300">No Job Openings Yet</p>
+              <p className="text-xs text-slate-500 max-w-xs mx-auto mt-1">
+                You haven't posted any job openings. Post a new opening to start matching with candidates!
+              </p>
+              <Button onClick={() => router.push("/employer/jobs/new")} className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs">
+                Create First Posting
+              </Button>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-4">
+              {jobs
+                .filter((job) => showInactiveJobs || job.active)
+                .map((job) => {
+                  const count = applicantCounts[job.id] || 0;
+                  return (
                     <div key={job.id} className="group text-left">
                       <Card 
                         className={`relative h-full text-white flex flex-col justify-between transition-all border ${
@@ -404,7 +291,7 @@ export default function EmployerDashboard() {
                             : "bg-rose-950/20 border-rose-500/30 opacity-90 group-hover:bg-rose-950/30"
                         }`}
                       >
-                          <div className="absolute bottom-2 right-2 z-10">
+                        <div className="absolute bottom-2 right-2 z-10">
                           <JobActionsMenu 
                             jobId={job.id} 
                             active={job.active} 
@@ -457,152 +344,14 @@ export default function EmployerDashboard() {
                           <div className="flex items-center justify-between text-xs text-slate-400">
                             <span>Visa Sponsor: <b>{job.visa_sponsorship ? "Yes" : "No"}</b></span>
                           </div>
-
                         </CardContent>
                       </Card>
                     </div>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tab 2: Candidates & Applications */}
-        {activeTab === "applicants" && (
-          <div className="space-y-4">
-            {/* Filters Bar */}
-            <div className="flex flex-col sm:flex-row gap-3 bg-slate-900/30 p-4 border border-white/10 rounded-xl">
-              <div className="flex-1 space-y-1">
-                <Label className="text-slate-400 text-xs">Filter by Job Opening</Label>
-                <Select value={selectedJobFilter} onValueChange={(val) => setSelectedJobFilter(val || "all")}>
-                  <SelectTrigger className="bg-slate-900 border-white/10 text-white">
-                    <SelectValue placeholder="All Jobs" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-white/10 text-white">
-                    <SelectItem value="all">All Job Openings</SelectItem>
-                    {jobs.map((j) => (
-                      <SelectItem key={j.id} value={j.id}>{j.role}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="w-full sm:w-48 space-y-1">
-                <Label className="text-slate-400 text-xs">Filter by Status</Label>
-                <Select value={selectedStatusFilter} onValueChange={(val) => setSelectedStatusFilter(val || "all")}>
-                  <SelectTrigger className="bg-slate-900 border-white/10 text-white">
-                    <SelectValue placeholder="All Statuses" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-white/10 text-white">
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="applied">Applied</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="interviewing">Interviewing</SelectItem>
-                    <SelectItem value="offer">Offer</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Applications List */}
-            {filteredApps.length === 0 ? (
-              <div className="text-center py-12 bg-slate-900/30 border border-dashed border-white/10 rounded-2xl">
-                <Users className="h-10 w-10 text-slate-500 mx-auto mb-3" />
-                <p className="font-semibold text-slate-300">No Matching Candidates</p>
-                <p className="text-xs text-slate-500 max-w-xs mx-auto mt-1">
-                  We couldn't find any candidate applications that match the selected filters.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredApps.map((app) => {
-                  const candidate = app.candidates;
-                  const candidateName = `${candidate.first_name || ""} ${candidate.last_name || ""}`.trim() || candidate.email || "Graduate Profile";
-                  const gpaText = candidate.gpa ? `GPA: ${candidate.gpa}` : "GPA: N/A";
-                  const university = candidate.sg_university || candidate.hk_university || "APAC Graduate";
-                  const resumeName = candidate.resume_url ? "View Resume" : "No Resume Uploaded";
-
-                  return (
-                    <Card key={app.id} className="bg-slate-900/50 border-white/10 text-white hover:border-white/20 transition-all p-4 sm:p-5">
-                      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-                        {/* Candidate Basic Details */}
-                        <div className="space-y-2 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-lg font-bold text-white">{candidateName}</h3>
-                            <Badge className="bg-indigo-950 text-indigo-300 border border-indigo-900/50 text-[10px]">
-                              Applied for: {app.jobs?.role}
-                            </Badge>
-                          </div>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-y-2 gap-x-4 text-xs text-slate-400">
-                            <div className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5 text-indigo-400" /> <span className="text-slate-300 font-medium">{university}</span></div>
-                            <div className="flex items-center gap-1.5"><Microscope className="h-3.5 w-3.5 text-indigo-400" /> Major: <span className="text-slate-300">{candidate.major || "Not specified"}</span></div>
-                            <div className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5 text-indigo-400" /> GPA: <span className="text-slate-300">{candidate.gpa || "N/A"}</span></div>
-                            <div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-indigo-400" /> Grad Date: <span className="text-slate-300">{candidate.grad_month_year || "N/A"}</span></div>
-                            <div className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-indigo-400" /> Email: <a href={`mailto:${candidate.email}`} className="text-indigo-400 hover:underline">{candidate.email}</a></div>
-                            <div className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-indigo-400" /> Phone: <span className="text-slate-300">{candidate.phone_country_code || ""} {candidate.phone_number || "N/A"}</span></div>
-                          </div>
-
-                          <div className="flex items-center gap-3 pt-2">
-                            {candidate.resume_url && (
-                              <a
-                                href={candidate.resume_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-medium hover:underline bg-emerald-950/30 px-2.5 py-1 rounded-lg border border-emerald-900/40"
-                              >
-                                <FileText className="h-3.5 w-3.5" /> View Resume <ExternalLink className="h-3 w-3" />
-                              </a>
-                            )}
-                            {candidate.linkedin_url && (
-                              <a
-                                href={candidate.linkedin_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300 font-medium hover:underline bg-sky-950/30 px-2.5 py-1 rounded-lg border border-sky-900/40"
-                              >
-                                <ExternalLink className="h-3.5 w-3.5" /> LinkedIn <ExternalLink className="h-3 w-3" />
-                              </a>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Status update & Internal Notes */}
-                        <div className="w-full lg:w-72 space-y-3 border-t lg:border-t-0 lg:border-l border-white/10 pt-3 lg:pt-0 lg:pl-5 flex flex-col justify-between">
-                          <div className="space-y-1.5">
-                            <Label className="text-slate-400 text-xs">Application Status</Label>
-                            <Select
-                              value={app.status}
-                              onValueChange={(val) => updateApplicationStatus(app.id, val || "applied")}
-                            >
-                              <SelectTrigger className="bg-slate-900 border-white/10 text-white w-full">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="bg-slate-900 border-white/10 text-white">
-                                <SelectItem value="applied">Applied</SelectItem>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="interviewing">Interviewing</SelectItem>
-                                <SelectItem value="offer">Offer</SelectItem>
-                                <SelectItem value="rejected">Rejected</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Notes */}
-                          <div className="space-y-1.5">
-                            <Label className="text-slate-400 text-xs">Internal Notes</Label>
-                            <NotesField appId={app.id} initialNotes={app.notes || ""} onSave={saveApplicationNotes} />
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
                   );
                 })}
-              </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

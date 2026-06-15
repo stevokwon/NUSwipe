@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, Users, ExternalLink, RefreshCw, Save, GraduationCap, Microscope, BarChart3, Calendar, Mail, Phone, FileText } from "lucide-react";
+import { ArrowLeft, Users, ExternalLink, RefreshCw, Save, GraduationCap, Microscope, BarChart3, Calendar, Mail, Phone, FileText, LayoutList, HandMetal } from "lucide-react";
+import { ApplicantSwipeStack } from "@/components/employer/ApplicantSwipeStack";
 
 interface ApplicationWithCandidate extends Application {
   jobs: Job;
@@ -77,6 +78,7 @@ export default function JobApplicantsPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [applications, setApplications] = useState<ApplicationWithCandidate[]>([]);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("all");
+  const [swipeMode, setSwipeMode] = useState(false);
 
   // Load page data
   async function loadData() {
@@ -350,6 +352,18 @@ export default function JobApplicantsPage() {
               </SelectContent>
             </Select>
           </div>
+
+          <div className="w-full sm:w-auto flex items-end sm:mt-0 mt-3">
+            <Button 
+              onClick={() => setSwipeMode(!swipeMode)}
+              variant={swipeMode ? "default" : "outline"}
+              className={`w-full sm:w-auto gap-2 ${swipeMode ? "bg-indigo-600 hover:bg-indigo-700" : "border-white/10 hover:bg-white/5"}`}
+            >
+              {swipeMode ? <LayoutList className="h-4 w-4" /> : <HandMetal className="h-4 w-4" />}
+              {swipeMode ? "List View" : "Swipe Mode"}
+            </Button>
+          </div>
+
           <div className="flex-1" />
           <div className="text-right text-xs text-slate-400 sm:whitespace-nowrap">
             Showing <span className="text-white font-semibold">{filteredApps.length}</span> of <span className="text-white font-semibold">{totalApplicants}</span> applicants
@@ -365,6 +379,11 @@ export default function JobApplicantsPage() {
               We couldn't find any applicants matching the selected filter.
             </p>
           </div>
+        ) : swipeMode ? (
+          <ApplicantSwipeStack 
+            applications={filteredApps} 
+            onStatusUpdate={updateApplicationStatus} 
+          />
         ) : (
           <div className="space-y-4">
             {filteredApps.map((app) => {
