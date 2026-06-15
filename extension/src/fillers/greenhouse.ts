@@ -10,6 +10,11 @@ export interface ApplyPayload {
   resume_base64?: string;
   resume_filename?: string;
   skills: string[];
+  university?: string | null;
+  grad_month_year?: string | null;
+  major?: string | null;
+  website_url?: string | null;
+  work_authorized?: boolean;
 }
 
 function setInputValue(selector: string, value: string): void {
