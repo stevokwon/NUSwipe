@@ -130,7 +130,7 @@ export default function NewJobPage() {
       }
 
       toast.success("Job posted successfully!");
-      router.push("/employer/dashboard");
+      router.push("/employer/jobs");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -154,7 +154,7 @@ export default function NewJobPage() {
       submitting={submitting}
       formData={formData}
       errors={errors}
-      onBack={() => router.push("/employer/dashboard")}
+      onBack={() => router.push("/employer/jobs")}
       onChange={updateFormData}
       onSubmit={handleSubmit}
     />

@@ -182,7 +182,7 @@ export default function EmployerJobsPage() {
                           <CompanyLogo 
                             company={job.company} 
                             logoUrl={job.logo_url} 
-                            className="h-12 w-12 rounded-xl shadow-inner border border-white/5 bg-slate-950" 
+                            className="h-12 w-12 rounded-xl" 
                           />
                           <div className="min-w-0 pr-8">
                             <div className="flex items-start gap-2 flex-wrap">

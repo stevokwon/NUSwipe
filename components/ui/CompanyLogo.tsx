@@ -43,7 +43,7 @@ export function CompanyLogo({ company, logoUrl, className = "h-14 w-14", size = 
   };
 
   return (
-    <div className={`rounded-2xl bg-white p-0 flex items-center justify-center shadow-lg overflow-hidden shrink-0 ${className}`}>
+    <div className={`rounded-2xl bg-white/5 flex items-center justify-center shadow-lg overflow-hidden shrink-0 ${className}`}>
       {!failedAll && currentUrl ? (
         <img 
           src={currentUrl} 

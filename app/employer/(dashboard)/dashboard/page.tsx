@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Briefcase, Users, FileText, CheckCircle, Clock, Plus, RefreshCw, TrendingUp, ArrowRight } from "lucide-react";
+import { Briefcase, Users, FileText, CheckCircle, Clock, RefreshCw, TrendingUp, ArrowRight } from "lucide-react";
 
 export default function EmployerDashboard() {
   const router = useRouter();
@@ -80,21 +80,6 @@ export default function EmployerDashboard() {
             Here's what's happening with <span className="text-indigo-400 font-medium">{employerProfile?.company_name}</span> today.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="outline" 
-            onClick={() => router.push("/employer/jobs")}
-            className="border-white/10 hover:bg-white/5 text-xs h-10 px-4"
-          >
-            Manage Jobs
-          </Button>
-          <Button 
-            onClick={() => router.push("/employer/jobs/new")} 
-            className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 h-10 px-4 shadow-lg shadow-indigo-500/20"
-          >
-            <Plus className="h-4 w-4" /> Post Job
-          </Button>
-        </div>
       </div>
 
       {/* Stats Grid */}
@@ -141,7 +126,7 @@ export default function EmployerDashboard() {
                 ))}
                 <Button 
                   variant="ghost" 
-                  className="w-full text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/5 text-xs font-bold gap-2"
+                  className="w-full text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/5 text-xs font-bold gap-2 cursor-pointer"
                   onClick={() => router.push("/employer/jobs")}
                 >
                   View all in Jobs <ArrowRight className="h-3 w-3" />

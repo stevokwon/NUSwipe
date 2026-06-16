@@ -55,7 +55,7 @@ export default function EditJobPage({
 
       if (error || !jobData) {
         toast.error("Job not found or unauthorized");
-        router.push("/employer/dashboard");
+        router.push("/employer/jobs");
         return;
       }
 
@@ -159,7 +159,7 @@ export default function EditJobPage({
       }
 
       toast.success("Job updated successfully!");
-      router.push("/employer/dashboard");
+      router.push("/employer/jobs");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -184,7 +184,7 @@ export default function EditJobPage({
       }
 
       toast.success(`Job ${nextActive ? "activated" : "paused"} successfully`);
-      router.push("/employer/dashboard");
+      router.push("/employer/jobs");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update job status");
     }
@@ -201,7 +201,7 @@ export default function EditJobPage({
       }
 
       toast.success("Job posting deleted");
-      router.push("/employer/dashboard");
+      router.push("/employer/jobs");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to delete job posting");
     }
@@ -224,7 +224,7 @@ export default function EditJobPage({
       formData={formData}
       errors={errors}
       isActive={job?.active}
-      onBack={() => router.push("/employer/dashboard")}
+      onBack={() => router.push("/employer/jobs")}
       onChange={updateFormData}
       onSubmit={handleSubmit}
       onPause={handleTogglePause}
