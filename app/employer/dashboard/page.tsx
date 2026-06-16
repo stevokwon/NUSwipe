@@ -267,7 +267,7 @@ export default function EmployerDashboard() {
                 id="showInactive"
                 checked={showInactiveJobs}
                 onChange={(e) => setShowInactiveJobs(e.target.checked)}
-                className="rounded border-white/10 bg-slate-900 text-indigo-600 focus:ring-indigo-500"
+                className="rounded border-white/10 bg-slate-900 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
               />
               <Label htmlFor="showInactive" className="text-sm text-slate-400 cursor-pointer">
                 Show Inactive Jobs
@@ -342,7 +342,7 @@ export default function EmployerDashboard() {
                               </p>
                               <button
                                 onClick={() => toggleJobExpansion(job.id)}
-                                className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider flex items-center gap-1"
+                                className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider flex items-center gap-1 cursor-pointer"
                               >
                                 {expandedJobs.has(job.id) ? "▲ Show less" : "▼ Read full description"}
                               </button>

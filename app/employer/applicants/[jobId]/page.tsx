@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, Users, ExternalLink, RefreshCw, Save, GraduationCap, Microscope, BarChart3, Calendar, Mail, Phone, FileText } from "lucide-react";
+import { ArrowLeft, Users, ExternalLink, RefreshCw, Save, GraduationCap, Microscope, BarChart3, Calendar, Mail, Phone, FileText, List, CreditCard, MessagesSquare } from "lucide-react";
 import { ApplicantSwipeStack } from "@/components/employer/ApplicantSwipeStack";
 
 interface ApplicationWithCandidate extends Application {
@@ -77,7 +77,7 @@ export default function JobApplicantsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [applications, setApplications] = useState<ApplicationWithCandidate[]>([]);
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("all");
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("All");
   const [swipeMode, setSwipeMode] = useState<null | "applied" | "interviewing">(null);
 
   // Load page data
@@ -218,7 +218,7 @@ export default function JobApplicantsPage() {
 
   // Filtered applications
   const filteredApps = applications.filter((app) => {
-    const statusMatch = selectedStatusFilter === "all" || app.status === selectedStatusFilter;
+    const statusMatch = selectedStatusFilter === "All" || app.status === selectedStatusFilter;
     return statusMatch;
   });
 
@@ -345,7 +345,7 @@ export default function JobApplicantsPage() {
               onValueChange={(val) => {
                 if (val === "list") {
                   setSwipeMode(null);
-                  setSelectedStatusFilter("all");
+                  setSelectedStatusFilter("All");
                 } else {
                   setSwipeMode(val as "applied" | "interviewing");
                   setSelectedStatusFilter(val === "applied" ? "applied" : "interviewing");
@@ -355,10 +355,16 @@ export default function JobApplicantsPage() {
               <SelectTrigger className="bg-slate-900 border-white/10 text-white w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/10 text-white">
-                <SelectItem value="list">📋 List View</SelectItem>
-                <SelectItem value="applied">👋 Swipe New</SelectItem>
-                <SelectItem value="interviewing">🤝 Swipe Interviewing</SelectItem>
+              <SelectContent align="start" alignItemWithTrigger={false} side="bottom" sideOffset={8} className="bg-slate-900 border-white/10 text-white w-full">
+                <SelectItem value="list">
+                  <span className="flex items-center gap-2"><List className="h-4 w-4" /> List View</span>
+                </SelectItem>
+                <SelectItem value="applied">
+                  <span className="flex items-center gap-2"><CreditCard className="h-4 w-4" /> Swipe New</span>
+                </SelectItem>
+                <SelectItem value="interviewing">
+                  <span className="flex items-center gap-2"><MessagesSquare className="h-4 w-4" /> Swipe Interviewing</span>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -366,17 +372,17 @@ export default function JobApplicantsPage() {
           {swipeMode === null && (
             <div className="w-full sm:w-48 space-y-1 flex-shrink-0 animate-in fade-in slide-in-from-left-2">
               <Label className="text-slate-400 text-xs">Filter by Status</Label>
-              <Select value={selectedStatusFilter} onValueChange={(val) => setSelectedStatusFilter(val || "all")}>
+              <Select value={selectedStatusFilter} onValueChange={(val) => setSelectedStatusFilter(val || "All")}>
                 <SelectTrigger className="bg-slate-900 border-white/10 text-white w-full">
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/10 text-white">
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="applied">Applied</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="interviewing">Interviewing</SelectItem>
-                  <SelectItem value="offer">Offer</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+              <SelectContent side="bottom" sideOffset={8} align="start" alignItemWithTrigger={false} className="bg-slate-900 border-white/10 text-white">
+                  <SelectItem value="All">All Statuses</SelectItem>
+                  <SelectItem value="Applied">Applied</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Interviewing">Interviewing</SelectItem>
+                  <SelectItem value="Offered">Offered</SelectItem>
+                  <SelectItem value="Rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
             </div>

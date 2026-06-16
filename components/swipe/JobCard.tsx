@@ -126,7 +126,7 @@ export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand, scor
             </p>
             {onToggleExpand && (
               <button
-                className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider flex items-center gap-1 mb-4"
+                className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider flex items-center gap-1 mb-4 cursor-pointer"
                 onClick={onToggleExpand}
               >
                 {expanded ? "▲ Show less" : "▼ Read full description"}
