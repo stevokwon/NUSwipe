@@ -25,8 +25,18 @@ export default function EmployerDashboard() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
 
-  // Filter State
+  // UI State
   const [showInactiveJobs, setShowInactiveJobs] = useState(false);
+  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
+
+  function toggleJobExpansion(jobId: string) {
+    setExpandedJobs((prev) => {
+      const next = new Set(prev);
+      if (next.has(jobId)) next.delete(jobId);
+      else next.add(jobId);
+      return next;
+    });
+  }
 
   // Load dashboard data
   async function loadData() {
@@ -326,7 +336,17 @@ export default function EmployerDashboard() {
                             <p className="text-sm text-indigo-300 font-medium">💰 {job.salary_range}</p>
                           )}
                           {job.description && (
-                            <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">{job.description}</p>
+                            <div className="space-y-2">
+                              <p className={`text-xs text-slate-400 leading-relaxed transition-all duration-300 whitespace-pre-wrap ${expandedJobs.has(job.id) ? "" : "line-clamp-3"}`}>
+                                {job.description}
+                              </p>
+                              <button
+                                onClick={() => toggleJobExpansion(job.id)}
+                                className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider flex items-center gap-1"
+                              >
+                                {expandedJobs.has(job.id) ? "▲ Show less" : "▼ Read full description"}
+                              </button>
+                            </div>
                           )}
                           <div className="flex flex-wrap gap-1">
                             {job.tags.map((tag) => (

@@ -120,9 +120,19 @@ export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand, scor
 
         {/* Description */}
         {job.description && (
-          <p className="text-sm text-slate-300/80 leading-relaxed mb-4 line-clamp-3">
-            {job.description}
-          </p>
+          <div className="space-y-2">
+            <p className={`text-sm text-slate-300/80 leading-relaxed mb-4 whitespace-pre-wrap ${expanded ? "" : "line-clamp-3"}`}>
+              {job.description}
+            </p>
+            {onToggleExpand && (
+              <button
+                className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors uppercase tracking-wider flex items-center gap-1 mb-4"
+                onClick={onToggleExpand}
+              >
+                {expanded ? "▲ Show less" : "▼ Read full description"}
+              </button>
+            )}
+          </div>
         )}
 
         {/* Tech tags */}
@@ -162,36 +172,20 @@ export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand, scor
             ))}
           </div>
         )}
-
-        {/* Expand toggle */}
-        {onToggleExpand && (
-          <button
-            className="text-xs text-slate-500 flex items-center gap-1 hover:text-slate-300 transition-colors"
-            onClick={onToggleExpand}
-          >
-            {expanded ? "▲ Less details" : "▼ More details"}
-          </button>
-        )}
       </div>
 
-      {/* ── Expanded section ────────────────────────────────────────────────── */}
-      {expanded && (
-        <div className="border-t border-white/[0.07] px-5 py-4 space-y-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Full Description
-          </p>
-          <p className="text-sm text-slate-300/70 leading-relaxed">{job.description}</p>
-          {job.ats_fallback_url && (
-            <a
-              href={job.ats_fallback_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-block text-xs text-purple-400 hover:underline"
-            >
-              View original posting →
-            </a>
-          )}
+      {/* ── Expanded section extras (original posting link) ──────────────────── */}
+      {expanded && job.ats_fallback_url && (
+        <div className="border-t border-white/[0.07] px-5 py-4">
+          <a
+            href={job.ats_fallback_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-block text-xs text-purple-400 hover:underline"
+          >
+            View original posting →
+          </a>
         </div>
       )}
     </div>

@@ -13,9 +13,11 @@ interface ApplicationWithCandidate extends Application {
 interface Props {
   application: ApplicationWithCandidate;
   dragX?: number;
+  rightLabel?: string;
+  leftLabel?: string;
 }
 
-export function ApplicantSwipeCard({ application, dragX = 0 }: Props) {
+export function ApplicantSwipeCard({ application, dragX = 0, rightLabel = "Shortlist", leftLabel = "Reject" }: Props) {
   const shortlistOpacity = Math.min(1, Math.max(0, dragX / 80));
   const rejectOpacity    = Math.min(1, Math.max(0, -dragX / 80));
 
@@ -34,7 +36,7 @@ export function ApplicantSwipeCard({ application, dragX = 0 }: Props) {
           className="absolute top-7 left-5 font-black text-2xl tracking-widest uppercase px-3 py-1 rounded-xl border-[3px] border-emerald-400 text-emerald-400 pointer-events-none z-10"
           style={{ transform: "rotate(-15deg)", opacity: shortlistOpacity }}
         >
-          Shortlist ✓
+          {rightLabel} ✓
         </div>
       )}
 
@@ -44,7 +46,7 @@ export function ApplicantSwipeCard({ application, dragX = 0 }: Props) {
           className="absolute top-7 right-5 font-black text-2xl tracking-widest uppercase px-3 py-1 rounded-xl border-[3px] border-rose-400 text-rose-400 pointer-events-none z-10"
           style={{ transform: "rotate(15deg)", opacity: rejectOpacity }}
         >
-          Reject ✕
+          {leftLabel} ✕
         </div>
       )}
 

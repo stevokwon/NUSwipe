@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, Users, ExternalLink, RefreshCw, Save, GraduationCap, Microscope, BarChart3, Calendar, Mail, Phone, FileText, LayoutList, HandMetal } from "lucide-react";
+import { ArrowLeft, Users, ExternalLink, RefreshCw, Save, GraduationCap, Microscope, BarChart3, Calendar, Mail, Phone, FileText } from "lucide-react";
 import { ApplicantSwipeStack } from "@/components/employer/ApplicantSwipeStack";
 
 interface ApplicationWithCandidate extends Application {
@@ -78,12 +78,12 @@ export default function JobApplicantsPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [applications, setApplications] = useState<ApplicationWithCandidate[]>([]);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("all");
-  const [swipeMode, setSwipeMode] = useState(false);
+  const [swipeMode, setSwipeMode] = useState<null | "applied" | "interviewing">(null);
 
   // Load page data
-  async function loadData() {
+  async function loadData(silent = false) {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const { data: { user }, error: authError } = await supabase.auth.getUser();
 
       if (authError || !user) {
@@ -103,8 +103,10 @@ export default function JobApplicantsPage() {
 
       if (jobError || !jobData) {
         console.error("Job fetch error:", jobError);
-        toast.error("Job not found or access denied.");
-        router.push("/employer/dashboard");
+        if (!silent) {
+          toast.error("Job not found or access denied.");
+          router.push("/employer/dashboard");
+        }
         return;
       }
       setJob(jobData as Job);
@@ -165,7 +167,7 @@ export default function JobApplicantsPage() {
       toast.error(errorMessage);
       console.error("Page load failure:", err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -184,7 +186,7 @@ export default function JobApplicantsPage() {
 
       if (error) throw error;
       toast.success(`Application status updated to ${status}`);
-      loadData();
+      loadData(true);
     } catch (err: any) {
       toast.error(err.message || "Failed to update application status");
     }
@@ -201,7 +203,7 @@ export default function JobApplicantsPage() {
 
       if (error) throw error;
       toast.success("Notes saved successfully");
-      loadData();
+      loadData(true);
     } catch (err: any) {
       toast.error(err.message || "Failed to save notes");
     }
@@ -337,32 +339,48 @@ export default function JobApplicantsPage() {
         {/* Filters Bar */}
         <div className="flex flex-col sm:flex-row gap-3 bg-slate-900/30 p-4 border border-white/10 rounded-xl items-start sm:items-center">
           <div className="w-full sm:w-48 space-y-1 flex-shrink-0">
-            <Label className="text-slate-400 text-xs">Filter by Status</Label>
-            <Select value={selectedStatusFilter} onValueChange={(val) => setSelectedStatusFilter(val || "all")}>
+            <Label className="text-slate-400 text-xs">Mode / View</Label>
+            <Select 
+              value={swipeMode === null ? "list" : swipeMode} 
+              onValueChange={(val) => {
+                if (val === "list") {
+                  setSwipeMode(null);
+                  setSelectedStatusFilter("all");
+                } else {
+                  setSwipeMode(val as "applied" | "interviewing");
+                  setSelectedStatusFilter(val === "applied" ? "applied" : "interviewing");
+                }
+              }}
+            >
               <SelectTrigger className="bg-slate-900 border-white/10 text-white w-full">
-                <SelectValue placeholder="All Statuses" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10 text-white">
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="applied">Applied</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="interviewing">Interviewing</SelectItem>
-                <SelectItem value="offer">Offer</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="list">📋 List View</SelectItem>
+                <SelectItem value="applied">👋 Swipe New</SelectItem>
+                <SelectItem value="interviewing">🤝 Swipe Interviewing</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="w-full sm:w-auto flex items-end sm:mt-0 mt-3">
-            <Button 
-              onClick={() => setSwipeMode(!swipeMode)}
-              variant={swipeMode ? "default" : "outline"}
-              className={`w-full sm:w-auto gap-2 ${swipeMode ? "bg-indigo-600 hover:bg-indigo-700" : "border-white/10 hover:bg-white/5"}`}
-            >
-              {swipeMode ? <LayoutList className="h-4 w-4" /> : <HandMetal className="h-4 w-4" />}
-              {swipeMode ? "List View" : "Swipe Mode"}
-            </Button>
-          </div>
+          {swipeMode === null && (
+            <div className="w-full sm:w-48 space-y-1 flex-shrink-0 animate-in fade-in slide-in-from-left-2">
+              <Label className="text-slate-400 text-xs">Filter by Status</Label>
+              <Select value={selectedStatusFilter} onValueChange={(val) => setSelectedStatusFilter(val || "all")}>
+                <SelectTrigger className="bg-slate-900 border-white/10 text-white w-full">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10 text-white">
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="applied">Applied</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="interviewing">Interviewing</SelectItem>
+                  <SelectItem value="offer">Offer</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="flex-1" />
           <div className="text-right text-xs text-slate-400 sm:whitespace-nowrap">
@@ -379,10 +397,23 @@ export default function JobApplicantsPage() {
               We couldn't find any applicants matching the selected filter.
             </p>
           </div>
-        ) : swipeMode ? (
+        ) : swipeMode === "applied" ? (
           <ApplicantSwipeStack 
-            applications={filteredApps} 
-            onStatusUpdate={updateApplicationStatus} 
+            applications={applications.filter(a => a.status === 'applied' || a.status === 'pending')} 
+            onStatusUpdate={updateApplicationStatus}
+            rightStatus="interviewing"
+            rightLabel="Shortlist"
+            leftStatus="rejected"
+            leftLabel="Reject"
+          />
+        ) : swipeMode === "interviewing" ? (
+          <ApplicantSwipeStack 
+            applications={applications.filter(a => a.status === 'interviewing')} 
+            onStatusUpdate={updateApplicationStatus}
+            rightStatus="offer"
+            rightLabel="Offer"
+            leftStatus="rejected"
+            leftLabel="Reject"
           />
         ) : (
           <div className="space-y-4">

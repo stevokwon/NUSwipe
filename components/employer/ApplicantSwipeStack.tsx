@@ -15,9 +15,20 @@ const SWIPE_THRESHOLD = 100;
 interface Props {
   applications: ApplicationWithCandidate[];
   onStatusUpdate: (appId: string, status: string) => Promise<void>;
+  rightStatus?: string;
+  leftStatus?: string;
+  rightLabel?: string;
+  leftLabel?: string;
 }
 
-export function ApplicantSwipeStack({ applications: initialApps, onStatusUpdate }: Props) {
+export function ApplicantSwipeStack({ 
+  applications: initialApps, 
+  onStatusUpdate,
+  rightStatus = "interviewing",
+  leftStatus = "rejected",
+  rightLabel = "Shortlist",
+  leftLabel = "Reject"
+}: Props) {
   const [apps, setApps] = useState<ApplicationWithCandidate[]>(initialApps);
   const [current, setCurrent] = useState(0);
   const [drag, setDrag] = useState({ x: 0, y: 0, active: false });
@@ -38,6 +49,12 @@ export function ApplicantSwipeStack({ applications: initialApps, onStatusUpdate 
 
   function onPointerDown(e: React.PointerEvent) {
     if (done || !topApp) return;
+    
+    // Don't start drag if clicking a link or button inside the card
+    if ((e.target as HTMLElement).closest("a") || (e.target as HTMLElement).closest("button")) {
+      return;
+    }
+
     startRef.current = { x: e.clientX, y: e.clientY };
     setDrag({ x: 0, y: 0, active: true });
     cardRef.current?.setPointerCapture(e.pointerId);
@@ -68,11 +85,11 @@ export function ApplicantSwipeStack({ applications: initialApps, onStatusUpdate 
     setCurrent((c) => c + 1);
 
     if (dir === "right") {
-      toast.success(`Shortlisted ${app.candidates.first_name || 'candidate'} ✓`);
-      await onStatusUpdate(app.id, "interviewing");
+      toast.success(`${rightLabel}ed ${app.candidates.first_name || 'candidate'} ✓`);
+      await onStatusUpdate(app.id, rightStatus);
     } else {
-      toast.error(`Rejected ${app.candidates.first_name || 'candidate'} ✕`);
-      await onStatusUpdate(app.id, "rejected");
+      toast.error(`${leftLabel}ed ${app.candidates.first_name || 'candidate'} ✕`);
+      await onStatusUpdate(app.id, leftStatus);
     }
   }
 
@@ -139,27 +156,32 @@ export function ApplicantSwipeStack({ applications: initialApps, onStatusUpdate 
           onPointerUp={onPointerUp}
           onPointerLeave={onPointerUp}
         >
-          <ApplicantSwipeCard application={topApp!} dragX={drag.x} />
+          <ApplicantSwipeCard 
+            application={topApp!} 
+            dragX={drag.x} 
+            rightLabel={rightLabel}
+            leftLabel={leftLabel}
+          />
         </div>
       </div>
 
       <div className="flex items-center justify-center gap-6">
         <button
           onClick={() => triggerRef.current("left")}
-          className="w-16 h-16 rounded-full flex items-center justify-center border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
+          className="w-16 h-16 rounded-full flex items-center justify-center border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 transition-all group"
         >
-          <span className="text-2xl text-rose-500">✕</span>
+          <span className="text-2xl text-rose-500 group-hover:scale-110 transition-transform">✕</span>
         </button>
         <button
           onClick={() => triggerRef.current("right")}
-          className="w-16 h-16 rounded-full flex items-center justify-center border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all"
+          className="w-16 h-16 rounded-full flex items-center justify-center border border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 transition-all group"
         >
-          <span className="text-2xl text-emerald-500">✓</span>
+          <span className="text-2xl text-emerald-500 group-hover:scale-110 transition-transform">✓</span>
         </button>
       </div>
       
       <p className="text-center text-[11px] text-slate-600">
-        ← reject &nbsp;·&nbsp; → shortlist &nbsp;·&nbsp; or drag the card
+        ← {leftLabel.toLowerCase()} &nbsp;·&nbsp; → {rightLabel.toLowerCase()} &nbsp;·&nbsp; or drag the card
       </p>
     </div>
   );

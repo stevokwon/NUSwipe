@@ -253,14 +253,18 @@ export function JobPostingForm({
                   value={formData.location}
                   onValueChange={(value) => onChange("location", value as string)}
                 >
-
-                  <SelectTrigger className="bg-slate-950/50 border-white/10 text-white">
+                  <SelectTrigger className="min-w-[200px] h-10 bg-slate-950/50 border-white/10 text-white">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-white/10 text-white">
-                    <SelectItem value="SG">🇸🇬 Singapore</SelectItem>
-                    <SelectItem value="HK">🇭🇰 Hong Kong</SelectItem>
-                    <SelectItem value="SG / HK">🇸🇬 SG / 🇭🇰 HK</SelectItem>
+                  <SelectContent 
+                    align="start" 
+                    sideOffset={12}
+                    alignItemWithTrigger={false} 
+                    className="bg-slate-900 border-white/10 text-white min-w-[200px]"
+                  >
+                    <SelectItem value="Singapore">Singapore</SelectItem>
+                    <SelectItem value="Hong Kong">Hong Kong</SelectItem>
+                    <SelectItem value="Singapore / Hong Kong">Singapore / Hong Kong</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>

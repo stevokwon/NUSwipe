@@ -171,6 +171,14 @@ function ApplicationCard({
             {new Date(app.applied_at).toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" })}
           </p>
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+...
           {isPending ? (
             /* Pending actions: re-open the career page + confirm submission */
             <div className="flex items-center gap-2">
@@ -196,17 +204,21 @@ function ApplicationCard({
             </div>
           ) : (
             /* Status selector for confirmed applications */
-            <select
+            <Select
               value={app.status}
-              onChange={(e) => onStatusChange(e.target.value as ApplicationStatus)}
-              className="text-xs bg-transparent border border-white/20 text-slate-300 rounded-lg px-2 py-1 cursor-pointer hover:border-purple-500 transition-colors"
+              onValueChange={(val) => onStatusChange(val as ApplicationStatus)}
             >
-              {COLUMNS.filter((c) => c.status !== "pending").map((c) => (
-                <option key={c.status} value={c.status} className="bg-slate-900">
-                  {c.icon} {c.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="h-7 text-xs bg-transparent border-white/20 text-slate-300 hover:border-purple-500 transition-colors">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-white/10 text-white">
+                {COLUMNS.filter((c) => c.status !== "pending").map((c) => (
+                  <SelectItem key={c.status} value={c.status}>
+                    {c.icon} {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
         </div>
       </div>
