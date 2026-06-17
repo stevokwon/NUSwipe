@@ -26,6 +26,10 @@ interface SubmitResult {
 // Map from background tabId → { nuswTabId, nuswOrigin, extensionToken, jobId }
 const pendingTabs = new Map<number, { nuswTabId: number; nuswOrigin: string; extensionToken: string; jobId: string }>();
 
+// Tabs that have already received NUSW_FILL — prevents re-filling if the
+// ATS page reloads (e.g. after a 400 error) while pendingTabs still has the entry.
+const sentFill = new Set<number>();
+
 const MAX_RESUME_BYTES = 5 * 1024 * 1024; // 5 MB
 const CHUNK_SIZE = 0x8000; // 32 KB — avoids stack overflow on spread
 
@@ -53,6 +57,12 @@ async function fetchResumeBase64(url: string): Promise<{ base64: string; filenam
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status !== "complete") return;
   if (!pendingTabs.has(tabId)) return;
+  if (sentFill.has(tabId)) {
+    // Tab reloaded after a failed submission — do NOT re-fill to avoid infinite loop
+    console.warn("[NUSwipe bg] tab", tabId, "reloaded after NUSW_FILL already sent — skipping");
+    return;
+  }
+  sentFill.add(tabId);
 
   chrome.storage.session.get(`payload_${tabId}`, async (result) => {
     const payload = result[`payload_${tabId}`] as SubmitPayload | undefined;
@@ -68,7 +78,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
       ? await fetchResumeBase64(payload.profile.resume_url)
       : null;
 
-    chrome.tabs.sendMessage(tabId, {
+    const fillMsg = {
       type: "NUSW_FILL",
       payload: {
         ...payload.profile,
@@ -76,6 +86,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
       },
       jobId: payload.jobId,
       extensionToken: payload.extensionToken,
+    };
+    console.log("[NUSwipe bg] sending NUSW_FILL to tab", tabId, "resume attached:", !!resume);
+    chrome.tabs.sendMessage(tabId, fillMsg, (resp) => {
+      if (chrome.runtime.lastError) {
+        console.error("[NUSwipe bg] NUSW_FILL sendMessage error:", chrome.runtime.lastError.message);
+      } else {
+        console.log("[NUSwipe bg] NUSW_FILL ack from content-lever:", resp);
+      }
     });
   });
 });
@@ -84,16 +102,18 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
   const msg = message as Record<string, unknown>;
 
   if (msg.type === "NUSW_SUBMIT") {
+    console.log("[NUSwipe bg] NUSW_SUBMIT received, jobUrl:", (msg as unknown as SubmitPayload).jobUrl);
     const payload = msg as unknown as SubmitPayload;
     const nuswTabId = sender.tab?.id;
-    if (!nuswTabId) return;
+    console.log("[NUSwipe bg] sender tab id:", nuswTabId, "origin:", sender.origin);
+    if (!nuswTabId) { console.warn("[NUSwipe bg] no sender tab id — aborting"); return; }
 
     // Derive the confirm URL from the sender's origin so this works on both
     // localhost and the production domain without a build-time env var.
     const nuswOrigin = sender.origin ?? sender.url?.replace(/\/[^/]*$/, "") ?? "";
 
     chrome.tabs
-      .create({ url: payload.jobUrl, active: false })
+      .create({ url: payload.jobUrl, active: true })
       .then((tab) => {
         if (!tab.id) return;
         pendingTabs.set(tab.id, {
@@ -112,6 +132,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
 
   if (msg.type === "SUBMIT_RESULT") {
     const result = msg as unknown as SubmitResult;
+    console.log("[NUSwipe bg] SUBMIT_RESULT received, success:", result.success);
     const bgTabId = sender.tab?.id;
     if (!bgTabId) return;
 
@@ -119,6 +140,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
     if (!pending) return;
 
     pendingTabs.delete(bgTabId);
+    sentFill.delete(bgTabId);
 
     if (result.success) {
       fetch(`${pending.nuswOrigin}/api/apply/confirm`, {
@@ -126,9 +148,11 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ extensionToken: pending.extensionToken }),
       }).catch(console.error);
+      chrome.tabs.remove(bgTabId);
+    } else {
+      // Keep tab open on failure so we can inspect the DOM
+      console.warn("[NUSwipe bg] submit failed — leaving tab open for inspection:", bgTabId);
     }
-
-    chrome.tabs.remove(bgTabId);
 
     chrome.tabs.sendMessage(pending.nuswTabId, {
       type: "SUBMIT_CONFIRMED",

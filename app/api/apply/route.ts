@@ -94,6 +94,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     await supabase.from("applications").insert(insertPayload as any);
 
     const p = profile as Profile;
+    const workAuthorized =
+      ["citizen", "pr", "ep"].includes(p.sg_residency ?? "") ||
+      ["citizen", "pr"].includes(p.hk_residency ?? "") ||
+      p.sg_residency === "student_pass"; // student pass holders can work part-time
     const profilePayload = {
       first_name: p.first_name ?? "",
       last_name: p.last_name ?? "",
@@ -102,6 +106,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       linkedin_url: p.linkedin_url ?? null,
       resume_url: p.resume_url ?? "",
       skills: p.skills ?? [],
+      university: p.sg_university ?? p.hk_university ?? null,
+      grad_month_year: p.grad_month_year ?? null,
+      major: p.major ?? null,
+      work_authorized: workAuthorized,
+      // Phase 1 smart form fill fields
+      nationality: p.nationality ?? null,
+      website_url: p.website_url ?? null,
+      degree_type: p.degree_type ?? null,
+      current_city: p.current_city ?? null,
+      availability_date: p.availability_date ?? null,
+      notice_period: p.notice_period ?? null,
+      years_experience: p.years_experience ?? null,
+      expected_salary_sgd: p.expected_salary_sgd ?? null,
+      expected_salary_hkd: p.expected_salary_hkd ?? null,
+      gender: p.gender ?? null,
+      ethnicity: p.ethnicity ?? null,
+      disability_status: p.disability_status ?? null,
+      veteran_status: p.veteran_status ?? null,
+      referral_source: p.referral_source ?? null,
+      cover_letter_default: p.cover_letter_default ?? null,
     };
 
     if (result.kind === "redirect") {
@@ -110,8 +134,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // Server-side POST is always blocked by Greenhouse/Lever bot protection.
         // Hand off to the Chrome extension: return extensionToken + the ATS job URL
         // so content-nusw.ts sends NUSW_SUBMIT and the extension fills the form.
+        //
+        // Lever: job listing URL is jobs.lever.co/{slug}/{uuid} — the application
+        // form is at .../apply. Append /apply so the extension opens the form directly.
+        const jobUrl =
+          atsType === "lever" && !result.url.endsWith("/apply")
+            ? `${result.url}/apply`
+            : result.url;
         return NextResponse.json(
-          { success: true, visaWarning, extensionToken, profile: profilePayload, jobUrl: result.url },
+          { success: true, visaWarning, extensionToken, profile: profilePayload, jobUrl },
           { status: 200 }
         );
       }

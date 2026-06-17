@@ -10,6 +10,26 @@ export interface ApplyPayload {
   resume_base64?: string;
   resume_filename?: string;
   skills: string[];
+  university?: string | null;
+  grad_month_year?: string | null;
+  major?: string | null;
+  website_url?: string | null;
+  work_authorized?: boolean;
+  // Phase 1 smart form fill
+  nationality?: string | null;
+  degree_type?: string | null;
+  current_city?: string | null;
+  availability_date?: string | null;
+  notice_period?: string | null;
+  years_experience?: string | null;
+  expected_salary_sgd?: number | null;
+  expected_salary_hkd?: number | null;
+  gender?: string | null;
+  ethnicity?: string | null;
+  disability_status?: string | null;
+  veteran_status?: string | null;
+  referral_source?: string | null;
+  cover_letter_default?: string | null;
 }
 
 function setInputValue(selector: string, value: string): void {

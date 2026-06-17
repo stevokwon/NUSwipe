@@ -241,7 +241,45 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
 
   // ── Done state ───────────────────────────────────────────────────────────────
 
-  if (done || filteredJobs.length === 0) {
+  const hasActiveFilters = activeFilters.size > 0 || minScore > 0;
+
+  if (filteredJobs.length === 0) {
+    if (hasActiveFilters) {
+      return (
+        <div
+          data-testid="swipe-empty"
+          className="flex flex-col items-center justify-center gap-4 py-20 text-center"
+        >
+          <div className="text-5xl">🔍</div>
+          <h2 className="text-xl font-bold text-white">No matches for these filters</h2>
+          <p className="text-slate-400 text-sm max-w-xs">
+            Try lowering the min. match score or removing a filter.
+          </p>
+          <button
+            onClick={() => { setActiveFilters(new Set()); setMinScore(0); }}
+            className="mt-1 px-4 py-2 rounded-xl text-sm font-semibold bg-purple-600/30 border border-purple-400/40 text-purple-300 hover:bg-purple-600/50 transition-colors"
+          >
+            Clear filters
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div
+        data-testid="swipe-empty"
+        className="flex flex-col items-center justify-center gap-4 py-20 text-center"
+      >
+        <div className="text-6xl">🎉</div>
+        <h2 className="text-2xl font-bold text-white">You're all caught up!</h2>
+        <p className="text-slate-400 text-sm max-w-xs">
+          Applied to {appliedCount} role{appliedCount !== 1 ? "s" : ""} today.
+          Check your tracker to follow up.
+        </p>
+      </div>
+    );
+  }
+
+  if (done) {
     return (
       <div
         data-testid="swipe-empty"
