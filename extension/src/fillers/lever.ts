@@ -435,14 +435,6 @@ function fillLeverCustomQuestions(payload: ApplyPayload): void {
     { keywords: ["eligible to work", "work eligibility", "authorized to work", "right to work", "work permit", "work in the country"], value: payload.work_authorized ? "Yes" : "No", optionKeywords: payload.work_authorized ? ["yes"] : ["no"] },
   ];
 
-  // Debug: show what we're working with
-  console.log("[NUSwipe lever] custom questions payload:", {
-    nationality: payload.nationality,
-    current_city: payload.current_city,
-    work_authorized: payload.work_authorized,
-    referral_source: payload.referral_source,
-  });
-
   // ── Phase 1: Label-first scan ─────────────────────────────────────────────
   // Covers standard Lever fields (<label>) and section headings (<h4>).
   // NOTE: Lever's custom dropdown question labels ("Where do you currently

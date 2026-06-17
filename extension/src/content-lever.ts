@@ -34,9 +34,7 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
 
   waitForForm()
     .then(async () => {
-      const allFields = document.querySelectorAll("[class*='application'], [class*='field'], [class*='form']");
-      console.log("[NUSwipe lever] form found! Fields on page:", allFields.length, "filling...");
-      console.log("[NUSwipe lever] first 5 field classes:", Array.from(allFields).slice(0,5).map(el => el.className));
+      console.log("[NUSwipe lever] form found, filling...");
       fillLeverForm(payload);
       // Wait for: typeahead/dropdowns (Phase 2 retries at 0.6s) + Lever's async resume upload.
       // Resume upload can take 3-5s on slow connections — give it 8s total.

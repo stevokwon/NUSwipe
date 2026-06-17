@@ -44,4 +44,4 @@ ALTER TABLE candidates
 
 -- ── Nationality (added after initial migration run) ───────────────────────────
 ALTER TABLE candidates
-  ADD COLUMN IF NOT EXISTS nationality TEXT;  -- e.g. 'Singaporean', 'Chinese', 'Indian'
+  ADD COLUMN IF NOT EXISTS nationality TEXT;  -- ISO 3166-1 country name, e.g. 'Singapore', 'South Korea'
