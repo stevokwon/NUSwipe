@@ -26,6 +26,7 @@ function makeProfile(overrides: Partial<Profile> = {}): Profile {
     linkedin_url: null,
     skills: [],
     target_role: null,
+    nationality: null,
     degree_type: null,
     website_url: null,
     current_city: null,

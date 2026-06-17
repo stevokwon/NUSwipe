@@ -81,15 +81,6 @@ INSERT INTO jobs (company, role, location, division, description, visa_sponsorsh
  ARRAY['data', 'analytics', 'SQL', 'internship', 'SG', 'e-commerce']
 ),
 
-('ShopBack', 'Product Management Intern', 'Singapore',
- 'Product',
- 'Drive features from ideation to launch at one of APAC''s leading cashback platforms. Work with engineering, design, and data teams to define product strategy and ship improvements used by millions of shoppers.',
- FALSE, 'SGD 2,800 / month',
- 'lever', 'shopback-2', '8dbcb810-cf5f-4306-a049-d8ecbadb3eeb',
- 'https://jobs.lever.co/shopback-2/8dbcb810-cf5f-4306-a049-d8ecbadb3eeb',
- NULL,
- ARRAY['product', 'PM', 'internship', 'SG', 'e-commerce']
-),
 
 -- ── GoTo Group ────────────────────────────────────────────────────────────────
 

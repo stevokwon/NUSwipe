@@ -17,6 +17,7 @@ export interface ApplyPayload {
   website_url?: string | null;
   work_authorized?: boolean;
   // Phase 1 smart form fill
+  nationality?: string | null;
   degree_type?: string | null;
   current_city?: string | null;
   availability_date?: string | null;
@@ -81,6 +82,7 @@ function attachResume(base64: string, filename: string): void {
   const fileInput = document.querySelector<HTMLInputElement>(
     ".resume-section input[type='file'], input[type='file'][name='resume'], input[type='file']"
   );
+  console.log("[NUSwipe lever] attachResume: fileInput found:", !!fileInput, fileInput?.name, fileInput?.accept);
   if (!fileInput) return;
 
   const byteString = atob(base64);
@@ -93,7 +95,17 @@ function attachResume(base64: string, filename: string): void {
   const dt = new DataTransfer();
   dt.items.add(file);
   fileInput.files = dt.files;
+  // Dispatch both change and input — React may listen to either depending on version
   fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+  fileInput.dispatchEvent(new Event("input", { bubbles: true }));
+  console.log("[NUSwipe lever] attachResume: dispatched change+input, files.length:", fileInput.files?.length);
+
+  // Lever does an async upload when it detects the file — retry after 1s to confirm UI updated
+  setTimeout(() => {
+    const resumeSection = document.querySelector(".resume-section, [class*='resume']");
+    const hasFilename = resumeSection?.textContent?.includes(filename.replace(".pdf", "")) ?? false;
+    console.log("[NUSwipe lever] attachResume 1s check — resume section text:", resumeSection?.textContent?.slice(0, 80), "| filename visible:", hasFilename);
+  }, 1000);
 }
 
 export function fillLeverForm(payload: ApplyPayload): void {
@@ -188,18 +200,41 @@ export function fillLeverForm(payload: ApplyPayload): void {
     );
   }
 
-  // Current location / city
-  if (payload.current_city) {
-    fillField(
-      findInput([
-        () => findByLabelText("current location"),
-        () => findByLabelText("current city"),
-        () => findByLabelText("city"),
-        () => findByLabelText("location"),
-        () => document.querySelector<HTMLInputElement>('input[name*="location" i], input[name*="city" i]'),
-      ]),
-      payload.current_city
-    );
+  // Location is handled by fillLeverCustomQuestions (typeahead with retry logic)
+
+  // Nationality — try native select + typeahead
+  if (payload.nationality) {
+    // Native select
+    const natSelects = document.querySelectorAll<HTMLSelectElement>("select");
+    for (const sel of natSelects) {
+      const lbl = document.querySelector<HTMLLabelElement>(`label[for="${sel.id}"]`);
+      if (lbl?.textContent?.toLowerCase().includes("national")) {
+        const opt = Array.from(sel.options).find((o) =>
+          o.text.toLowerCase().includes(payload.nationality!.toLowerCase())
+        );
+        if (opt) { sel.value = opt.value; sel.dispatchEvent(new Event("change", { bubbles: true })); }
+      }
+    }
+    // Typeahead input
+    const natInput = findInput([
+      () => findByLabelText("nationality"),
+      () => findByLabelText("citizenship"),
+      () => document.querySelector<HTMLInputElement>('input[name*="national" i]'),
+    ]);
+    if (natInput) {
+      fillField(natInput, payload.nationality);
+      setTimeout(() => {
+        const suggestions = document.querySelectorAll<HTMLElement>(
+          "[role='option'], [role='listbox'] li, .autocomplete-option, [class*='suggestion'], [class*='option']"
+        );
+        for (const s of suggestions) {
+          if (s.textContent?.toLowerCase().includes(payload.nationality!.toLowerCase())) {
+            s.click();
+            break;
+          }
+        }
+      }, 800);
+    }
   }
 
   // Availability / start date
@@ -352,9 +387,375 @@ export function fillLeverForm(payload: ApplyPayload): void {
     }
   }
 
+  // Lever custom question dropdowns (.application-question sections)
+  // These use React-rendered divs/buttons, not native <select>. We match
+  // question label text to known payload values and click the matching option.
+  fillLeverCustomQuestions(payload);
+
   if (payload.resume_base64 && payload.resume_filename) {
     attachResume(payload.resume_base64, payload.resume_filename);
   }
+}
+
+/**
+ * Fills Lever's custom "Additional Questions" section.
+ *
+ * Strategy: label-first, not container-first.
+ * Lever uses multiple DOM structures across versions/companies — scanning ALL
+ * labels on the page and matching text is the most robust approach.
+ */
+function fillLeverCustomQuestions(payload: ApplyPayload): void {
+  const referralMap: Record<string, string[]> = {
+    "LinkedIn": ["linkedin"],
+    "University career fair": ["university", "student club", "campus"],
+    "NUSwipe": ["other"],
+    "Company website": ["company career", "company website"],
+    "Friend / referral": ["friend", "colleague", "referral"],
+    "Job board": ["job board", "indeed", "glassdoor"],
+    "Other": ["other"],
+  };
+  const referralKeywords = referralMap[payload.referral_source ?? ""] ?? ["other"];
+
+  const questionMap: Array<{
+    keywords: string[];
+    value: string | null | undefined;
+    isTypeahead?: boolean;
+    optionKeywords?: string[];
+  }> = [
+    // Use specific phrases to avoid matching the standard "Current location" text input label
+    { keywords: ["where do you currently live", "where are you currently based", "currently live"], value: payload.current_city },
+    { keywords: ["nationality", "citizenship", "citizen"], value: payload.nationality },
+    { keywords: ["current company", "current employer", "employer name"], value: null },
+    { keywords: ["current school", "school name", "university name", "college"], value: payload.university },
+    // "Source of Applicants" is Binance's label for how-did-you-hear
+    { keywords: ["how did you hear", "how did you find", "how did you learn", "source of application", "source of hire", "source of applicant"], value: payload.referral_source ?? "Other", optionKeywords: referralKeywords },
+    { keywords: ["notice period", "notice", "when can you start", "earliest start"], value: payload.notice_period },
+    { keywords: ["years of experience", "years experience"], value: payload.years_experience },
+    { keywords: ["expected salary", "salary expectation", "desired salary"], value: payload.expected_salary_sgd?.toString() ?? payload.expected_salary_hkd?.toString() },
+    { keywords: ["eligible to work", "work eligibility", "authorized to work", "right to work", "work permit", "work in the country"], value: payload.work_authorized ? "Yes" : "No", optionKeywords: payload.work_authorized ? ["yes"] : ["no"] },
+  ];
+
+  // Debug: show what we're working with
+  console.log("[NUSwipe lever] custom questions payload:", {
+    nationality: payload.nationality,
+    current_city: payload.current_city,
+    work_authorized: payload.work_authorized,
+    referral_source: payload.referral_source,
+  });
+
+  // ── Phase 1: Label-first scan ─────────────────────────────────────────────
+  // Covers standard Lever fields (<label>) and section headings (<h4>).
+  // NOTE: Lever's custom dropdown question labels ("Where do you currently
+  // live?", "What is your nationality?") are rendered as plain <div> elements
+  // with no class — they are NOT found here. Phase 2 handles those.
+  const textEls = document.querySelectorAll<HTMLElement>(
+    "label, legend, h2, h3, h4, [class*='question-label']"
+  );
+
+  console.log("[NUSwipe lever] scanning", textEls.length, "label/heading elements for custom questions");
+
+  // Track which questions have been handled to avoid double-filling
+  const handled = new Set<string>();
+
+  for (const el of textEls) {
+    const elText = el.textContent?.trim().toLowerCase() ?? "";
+    if (!elText || elText.length > 200) continue; // skip empty or huge blobs
+
+    for (const { keywords, value, isTypeahead, optionKeywords } of questionMap) {
+      if (!value) {
+        // Log when we match a label but have no value to fill (helps diagnose profile gaps)
+        if (keywords.some((kw) => elText.includes(kw))) {
+          console.log("[NUSwipe lever] skip (null value) for:", keywords[0], "| label:", elText.slice(0, 50));
+        }
+        continue;
+      }
+      if (handled.has(keywords[0])) continue;
+      if (!keywords.some((kw) => elText.includes(kw))) continue;
+
+      console.log("[NUSwipe lever] matched question:", elText.slice(0, 60), "→ filling with:", value);
+      handled.add(keywords[0]);
+
+      // Walk up to find the question's container (the nearest ancestor that
+      // also contains the form control)
+      const container = findQuestionContainer(el);
+
+      // ── A. Radio group ──────────────────────────────────────────────────
+      const radios = container.querySelectorAll<HTMLInputElement>('input[type="radio"]');
+      if (radios.length > 0) {
+        const terms = optionKeywords ?? [value.toLowerCase()];
+        let picked: HTMLInputElement | null = null;
+        for (const term of terms) {
+          for (const r of radios) {
+            const lbl = (r.labels?.[0]?.textContent ?? r.nextSibling?.textContent ?? r.value).toLowerCase();
+            if (lbl.includes(term)) { picked = r; break; }
+          }
+          if (picked) break;
+        }
+        // Fallback: "Other" radio
+        if (!picked) {
+          for (const r of radios) {
+            const lbl = (r.labels?.[0]?.textContent ?? r.value).toLowerCase();
+            if (lbl.includes("other")) { picked = r; break; }
+          }
+        }
+        if (picked) {
+          picked.click();
+          picked.dispatchEvent(new Event("change", { bubbles: true }));
+          console.log("[NUSwipe lever] radio clicked:", picked.value);
+        } else {
+          console.log("[NUSwipe lever] no matching radio for:", value);
+        }
+        break;
+      }
+
+      // ── B. Native <select> ──────────────────────────────────────────────
+      const nativeSel = container.querySelector<HTMLSelectElement>("select");
+      if (nativeSel && nativeSel.options.length > 1) {
+        const terms = [value.toLowerCase(), ...(optionKeywords ?? [])];
+        let opt: HTMLOptionElement | undefined;
+        for (const term of terms) {
+          opt = Array.from(nativeSel.options).find((o) => o.text.toLowerCase().includes(term));
+          if (opt) break;
+        }
+        if (opt) {
+          const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")?.set;
+          setter?.call(nativeSel, opt.value);
+          nativeSel.dispatchEvent(new Event("change", { bubbles: true }));
+          console.log("[NUSwipe lever] native select filled:", opt.text);
+          break;
+        }
+      }
+
+      // ── C. Text input / typeahead (only if input is visibly rendered) ────
+      // Lever's React dropdowns embed a hidden internal input (width: 0).
+      // Skip those and fall through to handler D (React dropdown click).
+      const textInput = container.querySelector<HTMLInputElement>(
+        'input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]):not([type="submit"])'
+      );
+      const inputIsVisible = textInput
+        ? textInput.offsetWidth > 0 || textInput.offsetHeight > 0
+        : false;
+      if (textInput && inputIsVisible) {
+        fillField(textInput, value);
+        console.log("[NUSwipe lever] text input filled:", value);
+        if (isTypeahead) {
+          const tryClick = (attempt: number): boolean => {
+            const opts = document.querySelectorAll<HTMLElement>(
+              "[role='option'], [role='listbox'] li, [class*='result'], [class*='suggestion'], [class*='autocomplete'] li"
+            );
+            for (const o of opts) {
+              if (o.textContent?.toLowerCase().includes(value.toLowerCase())) {
+                o.click();
+                console.log("[NUSwipe lever] typeahead suggestion clicked (attempt", attempt, "):", o.textContent?.trim());
+                return true;
+              }
+            }
+            if (attempt >= 3) {
+              textInput.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", keyCode: 40, bubbles: true }));
+              setTimeout(() => textInput.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", keyCode: 13, bubbles: true })), 150);
+              console.log("[NUSwipe lever] typeahead: ArrowDown+Enter fallback");
+            }
+            return false;
+          };
+          setTimeout(() => { if (!tryClick(1)) setTimeout(() => { if (!tryClick(2)) setTimeout(() => tryClick(3), 1200); }, 1200); }, 1200);
+        }
+        break;
+      }
+
+      // ── D. React custom dropdown (click trigger, pick option from portal) ─
+      const trigger = container.querySelector<HTMLElement>(
+        "[role='combobox'], [role='button'], [aria-haspopup='listbox'], " +
+        "[data-qa='select-trigger'], [class*='select-trigger'], " +
+        "div[tabindex='0'], span[tabindex='0'], button:not([type='submit'])"
+      );
+      if (trigger) {
+        trigger.click();
+        console.log("[NUSwipe lever] React dropdown trigger clicked for:", value);
+        setTimeout(() => {
+          const optSel = "[role='option'], [role='listbox'] li, [data-qa='select-option'], [class*='option'], li[data-value]";
+          const opts = document.querySelectorAll<HTMLElement>(optSel);
+          const terms = [value.toLowerCase(), ...(optionKeywords ?? [])];
+          let found = false;
+          for (const term of terms) {
+            for (const opt of opts) {
+              if (opt.textContent?.toLowerCase().includes(term)) {
+                opt.click();
+                console.log("[NUSwipe lever] React dropdown picked:", opt.textContent?.trim());
+                found = true;
+                break;
+              }
+            }
+            if (found) break;
+          }
+          if (!found) console.log("[NUSwipe lever] React dropdown: no option matched for:", value, "| terms:", terms);
+        }, 700);
+        break;
+      }
+
+      console.log("[NUSwipe lever] no fillable control found for:", elText.slice(0, 60));
+      break;
+    }
+  }
+
+  // ── Phase 2: Deep div/span scan ───────────────────────────────────────────
+  // Lever's custom dropdown question labels ("Where do you currently live?",
+  // "What is your nationality?") are plain <div> elements — not <label> or
+  // heading elements. We scan all short-text divs/spans within the form to
+  // find them. Stagger multiple dropdowns by 1.5s to avoid portal collisions.
+  const unhandledDropdowns = questionMap.filter(
+    (q) => q.value && !handled.has(q.keywords[0])
+  );
+
+  if (unhandledDropdowns.length > 0) {
+    console.log("[NUSwipe lever] Phase 2 deep scan for", unhandledDropdowns.length, "unhandled questions");
+    const formEl = document.querySelector<HTMLElement>("form") ?? document.body;
+    const deepEls = formEl.querySelectorAll<HTMLElement>("div, span");
+
+    let dropdownDelay = 0; // stagger React dropdowns
+
+    for (const q of unhandledDropdowns) {
+      let foundEl: HTMLElement | null = null;
+      for (const el of deepEls) {
+        // Skip containers with many children — question labels are leaf-ish nodes
+        if (el.children.length > 2) continue;
+        const text = el.textContent?.trim().toLowerCase() ?? "";
+        if (text.length < 4 || text.length > 120) continue;
+        if (q.keywords.some((kw) => text.includes(kw))) { foundEl = el; break; }
+      }
+
+      if (!foundEl) {
+        console.log("[NUSwipe lever] Phase 2: not found for", q.keywords[0]);
+        continue;
+      }
+
+      const val = q.value!;
+      const terms = [val.toLowerCase(), ...(q.optionKeywords ?? [])];
+      console.log("[NUSwipe lever] Phase 2 found:", foundEl.textContent?.trim().slice(0, 60), "→", val);
+      handled.add(q.keywords[0]);
+
+      const container = findQuestionContainer(foundEl);
+
+      // ── Native <select> (Lever uses .application-question select) ──────────
+      const nativeSel2 = container.querySelector<HTMLSelectElement>("select");
+      if (nativeSel2) {
+        const fillNative = () => {
+          const opts = Array.from(nativeSel2.options);
+          const matched = opts.find((o) => terms.some((t) => o.text.toLowerCase().includes(t)));
+          if (matched) {
+            const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")?.set;
+            setter?.call(nativeSel2, matched.value);
+            nativeSel2.dispatchEvent(new Event("change", { bubbles: true }));
+            console.log("[NUSwipe lever] Phase 2 native select filled:", matched.text);
+          } else {
+            console.log("[NUSwipe lever] Phase 2 native select: no match for", val,
+              "| first options:", opts.slice(0, 5).map((o) => o.text).join(", "));
+          }
+        };
+        fillNative();
+        setTimeout(fillNative, 600); // retry if options load asynchronously
+        continue;
+      }
+
+      // ── Radio group ──────────────────────────────────────────────────────
+      const radios = container.querySelectorAll<HTMLInputElement>('input[type="radio"]');
+      if (radios.length > 0) {
+        let picked: HTMLInputElement | null = null;
+        for (const term of terms) {
+          for (const r of radios) {
+            const lbl = (r.labels?.[0]?.textContent ?? r.nextSibling?.textContent ?? r.value).toLowerCase();
+            if (lbl.includes(term)) { picked = r; break; }
+          }
+          if (picked) break;
+        }
+        if (!picked) {
+          for (const r of radios) {
+            if ((r.labels?.[0]?.textContent ?? r.value).toLowerCase().includes("other")) { picked = r; break; }
+          }
+        }
+        if (picked) {
+          picked.click();
+          picked.dispatchEvent(new Event("change", { bubbles: true }));
+          console.log("[NUSwipe lever] Phase 2 radio clicked:", picked.value);
+        }
+        continue;
+      }
+
+      // ── React dropdown (staggered) ────────────────────────────────────────
+      // First try: ARIA/role-based trigger in the container
+      let trigger = container.querySelector<HTMLElement>(
+        "[role='combobox'], [role='button'], div[tabindex='0'], span[tabindex='0'], button:not([type='submit'])"
+      );
+
+      // Fallback: Lever plain-div dropdowns have no ARIA attributes.
+      // Walk up from the LABEL element and find a sibling branch containing
+      // a "Select…" placeholder div (the dropdown's visual placeholder text).
+      if (!trigger) {
+        let anc: HTMLElement | null = foundEl;
+        outer: for (let d = 0; d < 6 && anc; d++) {
+          anc = anc.parentElement;
+          if (!anc || anc === document.body) break;
+          for (const el of anc.querySelectorAll<HTMLElement>("div, span, button")) {
+            if (el.contains(foundEl)) continue; // skip the label branch
+            const text = el.textContent?.trim() ?? "";
+            // Match "Select...", "Select…", "Select", "Select " etc.
+            if (/^Select[\s.…]{0,5}$/.test(text) && el.offsetParent !== null) {
+              trigger = el;
+              console.log("[NUSwipe lever] Phase 2 found 'Select' placeholder for:", val);
+              break outer;
+            }
+          }
+        }
+      }
+
+      if (trigger) {
+        const trig = trigger;
+        const delay = dropdownDelay;
+        setTimeout(() => {
+          trig.click();
+          console.log("[NUSwipe lever] Phase 2 trigger clicked for:", val, "(delay:", delay, "ms)");
+          setTimeout(() => {
+            const opts = document.querySelectorAll<HTMLElement>(
+              "[role='option'], [role='listbox'] li, [data-qa='select-option'], li[data-value]"
+            );
+            for (const term of terms) {
+              for (const opt of opts) {
+                if (opt.textContent?.toLowerCase().includes(term)) {
+                  opt.click();
+                  console.log("[NUSwipe lever] Phase 2 option picked:", opt.textContent?.trim());
+                  return;
+                }
+              }
+            }
+            console.log("[NUSwipe lever] Phase 2: no option matched for:", val);
+          }, 800);
+        }, delay);
+        dropdownDelay += 1500;
+        continue;
+      }
+
+      // ── Text input fallback ────────────────────────────────────────────────
+      const textInput = container.querySelector<HTMLInputElement>(
+        'input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]):not([type="submit"])'
+      );
+      if (textInput) {
+        fillField(textInput, val);
+        console.log("[NUSwipe lever] Phase 2 text input filled:", val);
+      }
+    }
+  }
+}
+
+/** Walk up from a label/heading to find the nearest ancestor that contains a form control. */
+function findQuestionContainer(labelEl: HTMLElement): HTMLElement {
+  let el: HTMLElement | null = labelEl.parentElement;
+  while (el && el !== document.body) {
+    const hasControl =
+      el.querySelector('input, select, textarea, [role="combobox"], [role="listbox"], [role="button"]') !== null;
+    if (hasControl) return el;
+    el = el.parentElement;
+  }
+  // Fallback: use a wide section around the label
+  return labelEl.closest("section, fieldset, form") ?? document.body;
 }
 
 export async function submitLeverForm(): Promise<boolean> {
@@ -370,6 +771,21 @@ export async function submitLeverForm(): Promise<boolean> {
     console.log("[NUSwipe lever] no submit button found");
     return false;
   }
+
+  // Lever/Binance forms use input[pattern] with regexes that Chrome validates
+  // using the strict Unicode-sets `v` flag internally. This causes a SyntaxError
+  // on submit-click that aborts the entire click. Since Lever uses React for
+  // validation anyway (not HTML5 constraint validation), it's safe to strip
+  // ALL pattern attributes before clicking.
+  let patternCount = 0;
+  document.querySelectorAll<HTMLInputElement>("input[pattern]").forEach((input) => {
+    input.removeAttribute("pattern");
+    patternCount++;
+  });
+  if (patternCount > 0) {
+    console.log("[NUSwipe lever] stripped", patternCount, "pattern attr(s) before submit");
+  }
+
   console.log("[NUSwipe lever] clicking submit:", submitBtn.textContent?.trim());
   submitBtn.click();
 

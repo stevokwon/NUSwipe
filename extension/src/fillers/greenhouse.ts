@@ -16,6 +16,7 @@ export interface ApplyPayload {
   website_url?: string | null;
   work_authorized?: boolean;
   // Phase 1 smart form fill
+  nationality?: string | null;
   degree_type?: string | null;
   current_city?: string | null;
   availability_date?: string | null;

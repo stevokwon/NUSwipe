@@ -26,6 +26,10 @@ interface SubmitResult {
 // Map from background tabId → { nuswTabId, nuswOrigin, extensionToken, jobId }
 const pendingTabs = new Map<number, { nuswTabId: number; nuswOrigin: string; extensionToken: string; jobId: string }>();
 
+// Tabs that have already received NUSW_FILL — prevents re-filling if the
+// ATS page reloads (e.g. after a 400 error) while pendingTabs still has the entry.
+const sentFill = new Set<number>();
+
 const MAX_RESUME_BYTES = 5 * 1024 * 1024; // 5 MB
 const CHUNK_SIZE = 0x8000; // 32 KB — avoids stack overflow on spread
 
@@ -53,6 +57,12 @@ async function fetchResumeBase64(url: string): Promise<{ base64: string; filenam
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status !== "complete") return;
   if (!pendingTabs.has(tabId)) return;
+  if (sentFill.has(tabId)) {
+    // Tab reloaded after a failed submission — do NOT re-fill to avoid infinite loop
+    console.warn("[NUSwipe bg] tab", tabId, "reloaded after NUSW_FILL already sent — skipping");
+    return;
+  }
+  sentFill.add(tabId);
 
   chrome.storage.session.get(`payload_${tabId}`, async (result) => {
     const payload = result[`payload_${tabId}`] as SubmitPayload | undefined;
@@ -130,6 +140,7 @@ chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) =>
     if (!pending) return;
 
     pendingTabs.delete(bgTabId);
+    sentFill.delete(bgTabId);
 
     if (result.success) {
       fetch(`${pending.nuswOrigin}/api/apply/confirm`, {

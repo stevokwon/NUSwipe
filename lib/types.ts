@@ -95,6 +95,8 @@ export interface Candidate {
   expected_salary_sgd: number | null;
   expected_salary_hkd: number | null;
   open_to_negotiation: boolean | null;
+  // Identity
+  nationality: string | null;
   // EEO / Diversity
   gender: string | null;
   ethnicity: string | null;

@@ -41,3 +41,7 @@ ALTER TABLE candidates
 ALTER TABLE candidates
   ADD COLUMN IF NOT EXISTS referral_source       TEXT,   -- 'LinkedIn'|'University career fair'|'NUSwipe'|'Other'
   ADD COLUMN IF NOT EXISTS cover_letter_default  TEXT;   -- short default cover letter paragraph (~200 chars)
+
+-- ── Nationality (added after initial migration run) ───────────────────────────
+ALTER TABLE candidates
+  ADD COLUMN IF NOT EXISTS nationality TEXT;  -- e.g. 'Singaporean', 'Chinese', 'Indian'

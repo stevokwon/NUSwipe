@@ -111,6 +111,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       major: p.major ?? null,
       work_authorized: workAuthorized,
       // Phase 1 smart form fill fields
+      nationality: p.nationality ?? null,
       website_url: p.website_url ?? null,
       degree_type: p.degree_type ?? null,
       current_city: p.current_city ?? null,

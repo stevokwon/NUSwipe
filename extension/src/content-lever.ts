@@ -38,7 +38,11 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
       console.log("[NUSwipe lever] form found! Fields on page:", allFields.length, "filling...");
       console.log("[NUSwipe lever] first 5 field classes:", Array.from(allFields).slice(0,5).map(el => el.className));
       fillLeverForm(payload);
-      console.log("[NUSwipe lever] fields filled, attempting submit...");
+      // Wait for: typeahead/dropdowns (Phase 2 retries at 0.6s) + Lever's async resume upload.
+      // Resume upload can take 3-5s on slow connections — give it 8s total.
+      console.log("[NUSwipe lever] fields filled, waiting 8s for dropdowns + resume upload...");
+      await new Promise((r) => setTimeout(r, 8000));
+      console.log("[NUSwipe lever] attempting submit...");
       const submitBtn = document.querySelector("button[type='submit'][data-qa='btn-submit-application']");
       console.log("[NUSwipe lever] submit button found:", !!submitBtn, submitBtn?.textContent);
       return submitLeverForm();
