@@ -13,9 +13,11 @@ interface Props {
   initialJobs: Job[];
   isLoading?: boolean;
   scores?: Record<string, ScoreResult>;
+  onSkip?: (job: Job) => Promise<void>;
+  isCircular?: boolean;
 }
 
-export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
+export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isCircular = false }: Props) {
   const [jobs]          = useState<Job[]>(initialJobs);
   const [current, setCurrent]   = useState(0);
   const [drag, setDrag]         = useState({ x: 0, y: 0, active: false });
@@ -73,13 +75,18 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
   });
 
   const topJob  = filteredJobs[current]     ?? null;
-  const nextJob = filteredJobs[current + 1] ?? null;
-  const done    = current >= filteredJobs.length;
+  const nextJob = filteredJobs[(current + 1) % filteredJobs.length] ?? null;
+  const done    = !isCircular && current >= filteredJobs.length;
 
   // ── Drag handlers ────────────────────────────────────────────────────────────
 
   function onPointerDown(e: React.PointerEvent) {
     if (expanded || submitting || !topJob) return;
+
+    // Don't start drag if clicking a button or link
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("a")) return;
+
     startRef.current = { x: e.clientX, y: e.clientY };
     setDrag({ x: 0, y: 0, active: true });
     cardRef.current?.setPointerCapture(e.pointerId);
@@ -110,7 +117,16 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
     setLastAction({ job, dir });
     setDrag({ x: 0, y: 0, active: false });
     setExpanded(false);
-    setCurrent((c) => c + 1);
+    
+    if (isCircular) {
+      const nextIndex = (current + 1) % filteredJobs.length;
+      setCurrent(nextIndex);
+      if (nextIndex === 0) {
+        toast.info("Cycled back to the start");
+      }
+    } else {
+      setCurrent((c) => c + 1);
+    }
 
     if (dir === "right") {
       setAppliedCount((c) => c + 1);
@@ -119,7 +135,11 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
       setTimeout(() => setShowMatch(false), 1800);
       submitApplication(job);                          // fire-and-forget (no await)
     } else {
-      await recordSkip(job);
+      if (onSkip) {
+        await onSkip(job);
+      } else {
+        await recordSkip(job);
+      }
     }
   }
 
@@ -179,7 +199,11 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
 
   function handleUndo() {
     if (!lastAction) return;
-    setCurrent((c) => c - 1);
+    if (isCircular) {
+        setCurrent((c) => (c - 1 + filteredJobs.length) % filteredJobs.length);
+    } else {
+        setCurrent((c) => c - 1);
+    }
     if (lastAction.dir === "right") setAppliedCount((c) => c - 1);
     setLastAction(null);
     setExpanded(false);
@@ -239,63 +263,9 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
     );
   }
 
-  // ── Done state ───────────────────────────────────────────────────────────────
+  // ── Main render ──────────────────────────────────────────────────────────────
 
   const hasActiveFilters = activeFilters.size > 0 || minScore > 0;
-
-  if (filteredJobs.length === 0) {
-    if (hasActiveFilters) {
-      return (
-        <div
-          data-testid="swipe-empty"
-          className="flex flex-col items-center justify-center gap-4 py-20 text-center"
-        >
-          <div className="text-5xl">🔍</div>
-          <h2 className="text-xl font-bold text-white">No matches for these filters</h2>
-          <p className="text-slate-400 text-sm max-w-xs">
-            Try lowering the min. match score or removing a filter.
-          </p>
-          <button
-            onClick={() => { setActiveFilters(new Set()); setMinScore(0); }}
-            className="mt-1 px-4 py-2 rounded-xl text-sm font-semibold bg-purple-600/30 border border-purple-400/40 text-purple-300 hover:bg-purple-600/50 transition-colors"
-          >
-            Clear filters
-          </button>
-        </div>
-      );
-    }
-    return (
-      <div
-        data-testid="swipe-empty"
-        className="flex flex-col items-center justify-center gap-4 py-20 text-center"
-      >
-        <div className="text-6xl">🎉</div>
-        <h2 className="text-2xl font-bold text-white">You're all caught up!</h2>
-        <p className="text-slate-400 text-sm max-w-xs">
-          Applied to {appliedCount} role{appliedCount !== 1 ? "s" : ""} today.
-          Check your tracker to follow up.
-        </p>
-      </div>
-    );
-  }
-
-  if (done) {
-    return (
-      <div
-        data-testid="swipe-empty"
-        className="flex flex-col items-center justify-center gap-4 py-20 text-center"
-      >
-        <div className="text-6xl">🎉</div>
-        <h2 className="text-2xl font-bold text-white">You're all caught up!</h2>
-        <p className="text-slate-400 text-sm max-w-xs">
-          Applied to {appliedCount} role{appliedCount !== 1 ? "s" : ""} today.
-          Check your tracker to follow up.
-        </p>
-      </div>
-    );
-  }
-
-  // ── Main render ──────────────────────────────────────────────────────────────
 
   return (
     <div data-testid="swipe-stack" className="flex flex-col w-full max-w-[440px] mx-auto">
@@ -372,110 +342,138 @@ export function SwipeStack({ initialJobs, isLoading = false, scores }: Props) {
         </div>
       </div>
 
-      {/* Card stack */}
-      <div className="relative w-full">
-        {/* Background peek card */}
-        {nextJob && (
-          <div
-            className="absolute inset-x-0 top-0 rounded-3xl bg-white/[0.04] border border-white/[0.07]"
-            style={{
-              transform: "scale(0.93) translateY(18px)",
-              zIndex: 0,
-              height: "100%",
-              minHeight: 300,
-            }}
-          />
-        )}
-
-        {/* Top card with drag */}
+      {done ? (
         <div
-          ref={cardRef}
-          className="relative w-full"
-          style={{
-            zIndex: 2,
-            cursor: drag.active ? "grabbing" : "grab",
-            touchAction: "none",
-            transition: drag.active ? "none" : "transform 0.3s cubic-bezier(.4,0,.2,1)",
-            transform: drag.active
-              ? `translate(${drag.x}px, ${drag.y * 0.3}px) rotate(${rotation}deg)`
-              : "none",
-          }}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerLeave={onPointerUp}
+          data-testid="swipe-empty"
+          className="flex flex-col items-center justify-center gap-4 py-12 text-center"
         >
-          <JobCard
-            job={topJob!}
-            dragX={drag.x}
-            expanded={expanded}
-            onToggleExpand={(e) => {
-              e.stopPropagation();
-              setExpanded((v) => !v);
-            }}
-            score={scores?.[topJob!.id]?.score}
-            reasons={scores?.[topJob!.id]?.reasons}
-          />
+          {filteredJobs.length === 0 && hasActiveFilters ? (
+            <>
+              <div className="text-5xl">🔍</div>
+              <h2 className="text-xl font-bold text-white">No matches for these filters</h2>
+              <p className="text-slate-400 text-sm max-w-xs">
+                Try lowering the min. match score or removing a filter.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="text-6xl">🎉</div>
+              <h2 className="text-2xl font-bold text-white">You're all caught up!</h2>
+              <p className="text-slate-400 text-sm max-w-xs">
+                Applied to {appliedCount} role{appliedCount !== 1 ? "s" : ""} today.
+                Check your tracker to follow up.
+              </p>
+            </>
+          )}
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Card stack */}
+          <div className="relative w-full">
+            {/* Background peek card */}
+            {nextJob && (
+              <div
+                className="absolute inset-x-0 top-0 rounded-3xl bg-white/[0.04] border border-white/[0.07]"
+                style={{
+                  transform: "scale(0.93) translateY(18px)",
+                  zIndex: 0,
+                  height: "100%",
+                  minHeight: 300,
+                }}
+              />
+            )}
 
-      {/* Action buttons */}
-      <div className="flex items-center justify-center gap-5 pt-6 pb-2 relative">
-        {/* Skip */}
-        <button
-          onClick={() => triggerSwipe("left")}
-          disabled={submitting}
-          aria-label="Skip"
-          className="w-14 h-14 rounded-full flex items-center justify-center border border-red-500/40 bg-white/5 shadow-lg hover:bg-red-950/40 hover:scale-105 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+            {/* Top card with drag */}
+            <div
+              ref={cardRef}
+              className="relative w-full"
+              style={{
+                zIndex: 2,
+                cursor: drag.active ? "grabbing" : "grab",
+                touchAction: "none",
+                transition: drag.active ? "none" : "transform 0.3s cubic-bezier(.4,0,.2,1)",
+                transform: drag.active
+                  ? `translate(${drag.x}px, ${drag.y * 0.3}px) rotate(${rotation}deg)`
+                  : "none",
+              }}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerLeave={onPointerUp}
+            >
+              <JobCard
+                job={topJob!}
+                dragX={drag.x}
+                expanded={expanded}
+                onToggleExpand={(e) => {
+                  e.stopPropagation();
+                  setExpanded((v) => !v);
+                }}
+                score={scores?.[topJob!.id]?.score}
+                reasons={scores?.[topJob!.id]?.reasons}
+              />
+            </div>
+          </div>
 
-        {/* Super-like (coming soon) */}
-        <button
-          disabled
-          aria-label="Save for later (coming soon)"
-          title="Coming soon"
-          className="w-12 h-12 rounded-full flex items-center justify-center border border-yellow-400/25 bg-white/5 opacity-40 cursor-not-allowed"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-          </svg>
-        </button>
+          {/* Action buttons */}
+          <div className="flex items-center justify-center gap-5 pt-6 pb-2 relative">
+            {/* Skip */}
+            <button
+              onClick={() => triggerSwipe("left")}
+              disabled={submitting}
+              aria-label="Skip"
+              className="w-14 h-14 rounded-full flex items-center justify-center border border-red-500/40 bg-white/5 shadow-lg hover:bg-red-950/40 hover:scale-105 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
 
-        {/* Apply */}
-        <button
-          onClick={() => triggerSwipe("right")}
-          disabled={submitting}
-          aria-label="Apply"
-          className="w-[72px] h-[72px] rounded-full flex items-center justify-center shadow-[0_8px_32px_rgba(124,58,237,0.5)] hover:scale-105 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ background: "linear-gradient(135deg, #7c3aed, #9d46f5)" }}
-        >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-          </svg>
-        </button>
+            {/* Super-like (coming soon) */}
+            <button
+              disabled
+              aria-label="Save for later (coming soon)"
+              title="Coming soon"
+              className="w-12 h-12 rounded-full flex items-center justify-center border border-yellow-400/25 bg-white/5 opacity-40 cursor-not-allowed"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </button>
 
-        {/* Undo */}
-        {lastAction && (
-          <button
-            onClick={handleUndo}
-            className="w-12 h-12 rounded-full flex items-center justify-center border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200 transition-all text-sm"
-            aria-label="Undo last swipe"
-            title="Undo"
-          >
-            ↩
-          </button>
-        )}
-      </div>
+            {/* Apply */}
+            <button
+              onClick={() => triggerSwipe("right")}
+              disabled={submitting}
+              aria-label="Apply"
+              className="w-[72px] h-[72px] rounded-full flex items-center justify-center shadow-[0_8px_32px_rgba(124,58,237,0.5)] hover:scale-105 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: "linear-gradient(135deg, #7c3aed, #9d46f5)" }}
+            >
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+            </button>
 
-      {/* Keyboard hint */}
-      <p className="text-center text-[11px] text-slate-600 pt-1 pb-4">
-        ← skip &nbsp;·&nbsp; → apply &nbsp;·&nbsp; or drag the card
-      </p>
+            {/* Undo */}
+            {lastAction && (
+              <button
+                onClick={handleUndo}
+                className="w-12 h-12 rounded-full flex items-center justify-center border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200 transition-all text-sm"
+                aria-label="Undo last swipe"
+                title="Undo"
+              >
+                ↩
+              </button>
+            )}
+          </div>
+
+          {/* Keyboard hint */}
+          <p className="text-center text-[11px] text-slate-600 pt-1 pb-4">
+            ← skip &nbsp;·&nbsp; → apply &nbsp;·&nbsp; or drag the card
+          </p>
+        </>
+      )}
 
       {/* Match toast */}
       {showMatch && lastAction?.dir === "right" && (

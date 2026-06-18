@@ -5,6 +5,14 @@ import { toast } from "sonner";
 import type { ApplicationWithJob, ApplicationStatus } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 
 const COLUMNS: { status: ApplicationStatus; label: string; icon: string; color: string }[] = [
   { status: "pending", label: "Pending", icon: "⏳", color: "border-orange-500/40 bg-orange-950/20" },
@@ -171,14 +179,6 @@ function ApplicationCard({
             {new Date(app.applied_at).toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" })}
           </p>
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-...
           {isPending ? (
             /* Pending actions: re-open the career page + confirm submission */
             <div className="flex items-center gap-2">
