@@ -2,6 +2,7 @@
 
 import { useState, useRef, KeyboardEvent, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types";
