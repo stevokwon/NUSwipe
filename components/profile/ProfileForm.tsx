@@ -906,7 +906,7 @@ export function ProfileForm({ profile, userId }: Props) {
           </p>
 
           <div
-            className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 transition-colors"
+            className="w-full max-w-md mx-auto border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 transition-colors"
             onClick={() => fileRef.current?.click()}
           >
             {form.resume_url ? (

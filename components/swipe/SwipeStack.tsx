@@ -85,7 +85,7 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
   // ── Drag handlers ────────────────────────────────────────────────────────────
 
   function onPointerDown(e: React.PointerEvent) {
-    if (expanded || submitting || !topJob) return;
+    if (submitting || !topJob) return;
 
     // Don't start drag if clicking a button or link
     const target = e.target as HTMLElement;
