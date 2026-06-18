@@ -6,7 +6,7 @@ import { getCompanyLogo } from "@/lib/utils";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 
 interface Props {
-  job: Job;
+  job: Job | null | undefined;
   dragX?: number;
   expanded?: boolean;
   onToggleExpand?: (e: React.MouseEvent) => void;
@@ -25,6 +25,9 @@ function initials(company: string): string {
 }
 
 export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand, score, reasons }: Props) {
+  console.log("JobCard job prop:", job);
+  if (!job) return null;
+
   const applyOpacity = Math.min(1, Math.max(0, dragX / 80));
   const skipOpacity  = Math.min(1, Math.max(0, -dragX / 80));
 

@@ -56,7 +56,13 @@ export default async function SkippedPage() {
   return (
     <div className="flex flex-col items-center pt-6 pb-16 px-4">
       <h1 className="text-2xl font-bold text-white mb-6">Skipped Jobs</h1>
-      <SwipeStack initialJobs={skippedJobs} scores={scores} isCircular={true} />
+      <SwipeStack 
+        initialJobs={skippedJobs} 
+        scores={scores} 
+        isCircular={true} 
+        emptyMessage="No skipped jobs"
+        emptyLink={{ href: "/swipe", text: "Go to Jobs" }}
+      />
     </div>
   );
 }

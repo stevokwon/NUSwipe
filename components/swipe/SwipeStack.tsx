@@ -2,9 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 import type { Job } from "@/lib/types";
 import type { ScoreResult } from "@/lib/scoring/rule-based";
 import { JobCard } from "./JobCard";
+import { cn } from "@/lib/utils";
 
 const SWIPE_THRESHOLD = 100;
 const FILTERS = ["All Roles", "Internships", "Full-time", "SG Only", "Visa ✓"] as const;
@@ -15,9 +17,11 @@ interface Props {
   scores?: Record<string, ScoreResult>;
   onSkip?: (job: Job) => Promise<void>;
   isCircular?: boolean;
+  emptyMessage?: string;
+  emptyLink?: { href: string; text: string };
 }
 
-export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isCircular = false }: Props) {
+export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isCircular = false, emptyMessage = "No jobs found", emptyLink }: Props) {
   const [jobs]          = useState<Job[]>(initialJobs);
   const [current, setCurrent]   = useState(0);
   const [drag, setDrag]         = useState({ x: 0, y: 0, active: false });
@@ -117,7 +121,7 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
     setLastAction({ job, dir });
     setDrag({ x: 0, y: 0, active: false });
     setExpanded(false);
-    
+
     if (isCircular) {
       const nextIndex = (current + 1) % filteredJobs.length;
       setCurrent(nextIndex);
@@ -366,7 +370,7 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
             </>
           )}
         </div>
-      ) : (
+      ) : topJob ? (
         <>
           {/* Card stack */}
           <div className="relative w-full">
@@ -402,15 +406,15 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
               onPointerLeave={onPointerUp}
             >
               <JobCard
-                job={topJob!}
+                job={topJob}
                 dragX={drag.x}
                 expanded={expanded}
                 onToggleExpand={(e) => {
                   e.stopPropagation();
                   setExpanded((v) => !v);
                 }}
-                score={scores?.[topJob!.id]?.score}
-                reasons={scores?.[topJob!.id]?.reasons}
+                score={topJob ? scores?.[topJob.id]?.score : undefined}
+                reasons={topJob ? scores?.[topJob.id]?.reasons : undefined}
               />
             </div>
           </div>
@@ -473,6 +477,17 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
             ← skip &nbsp;·&nbsp; → apply &nbsp;·&nbsp; or drag the card
           </p>
         </>
+      ) : (
+        <div className="text-center py-12 text-slate-400">
+          {emptyMessage}
+          {emptyLink && (
+            <div className="mt-2">
+              <Link href={emptyLink.href} className="text-purple-400 hover:underline">
+                {emptyLink.text}
+              </Link>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Match toast */}
@@ -527,3 +542,4 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
     </div>
   );
 }
+

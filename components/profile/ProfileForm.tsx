@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, KeyboardEvent } from "react";
+import { useState, useRef, KeyboardEvent, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -11,8 +11,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
-// ── Country list — ISO 3166-1 common names matching Lever/Greenhouse dropdowns ─
+// ── Phone country codes (ISO 3166-1 + dial code) ─────────────────────────────
+const PHONE_CODES = [
+  { code: "+65", label: "+65 (Singapore)" },
+  { code: "+852", label: "+852 (Hong Kong)" },
+  { code: "+60", label: "+60 (Malaysia)" },
+  { code: "+62", label: "+62 (Indonesia)" },
+  { code: "+91", label: "+91 (India)" },
+  { code: "+1", label: "+1 (US/Canada)" },
+  { code: "+44", label: "+44 (UK)" },
+  { code: "+81", label: "+81 (Japan)" },
+  { code: "+86", label: "+86 (China)" },
+  { code: "+82", label: "+82 (South Korea)" },
+  { code: "+66", label: "+66 (Thailand)" },
+  { code: "+63", label: "+63 (Philippines)" },
+  { code: "+61", label: "+61 (Australia)" },
+  { code: "+33", label: "+33 (France)" },
+  { code: "+49", label: "+49 (Germany)" },
+] as const;
+
+// ── Complete country list (195 UN-recognized countries) ─────────────────────
 const COUNTRIES = [
   "Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda",
   "Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain",
@@ -55,6 +76,71 @@ const STEPS = [
 ] as const;
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
+// ── Searchable Dropdown (better UX for long lists) ──────────────────────────
+function SearchableSelect({
+  value,
+  onValueChange,
+  options,
+  placeholder,
+  className
+}: {
+  value: string;
+  onValueChange: (val: string) => void;
+  options: string[];
+  placeholder?: string;
+  className?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const filtered = useMemo(() => 
+    options.filter(opt => opt.toLowerCase().includes(search.toLowerCase())),
+    [options, search]
+  );
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <Input
+        value={isOpen ? search : value}
+        onChange={(e) => {
+          if (!isOpen) setIsOpen(true);
+          setSearch(e.target.value);
+        }}
+        onFocus={() => {
+          setIsOpen(true);
+          setSearch("");
+        }}
+        onBlur={() => setTimeout(() => setIsOpen(false), 150)} // Delay to allow click
+        placeholder={placeholder}
+        className={className}
+      />
+      {isOpen && (
+        <div className="absolute top-full left-0 right-0 mt-2 max-h-60 overflow-y-auto bg-slate-900 border border-white/20 rounded-lg shadow-xl z-50">
+          {filtered.length > 0 ? (
+            filtered.map(opt => (
+              <button
+                key={opt}
+                type="button"
+                onMouseDown={() => {
+                  onValueChange(opt);
+                  setIsOpen(false);
+                  setSearch("");
+                }}
+                className="w-full text-left px-3 py-2 text-sm text-white hover:bg-white/10 transition-colors"
+              >
+                {opt}
+              </button>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-sm text-slate-400">No results found</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Props {
   profile: Profile;
   userId: string;
@@ -74,6 +160,7 @@ export function ProfileForm({ profile, userId }: Props) {
     first_name: profile.first_name ?? "",
     last_name: profile.last_name ?? "",
     preferred_name: profile.preferred_name ?? "",
+    email: profile.email ?? "",
     phone_country_code: profile.phone_country_code ?? "+65",
     phone_number: profile.phone_number ?? "",
     linkedin_url: profile.linkedin_url ?? "",
@@ -102,7 +189,7 @@ export function ProfileForm({ profile, userId }: Props) {
     expected_salary_sgd: profile.expected_salary_sgd?.toString() ?? "",
     expected_salary_hkd: profile.expected_salary_hkd?.toString() ?? "",
     open_to_negotiation: profile.open_to_negotiation ?? true,
-    // Identity / EEO
+    // EEO
     gender: profile.gender ?? "",
     ethnicity: profile.ethnicity ?? "",
     disability_status: profile.disability_status ?? "",
@@ -134,7 +221,7 @@ export function ProfileForm({ profile, userId }: Props) {
 
   // ── Skills input ───────────────────────────────────────────────────────────
   function addSkillsFromInput(raw: string) {
-    const tokens = raw.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
+    const tokens = raw.split(/[,\n]/).map((s) => s.trim()).filter((s) => s.length > 0);
     if (tokens.length === 0) return;
     setSkills((prev) => {
       const next = [...prev];
@@ -144,11 +231,12 @@ export function ProfileForm({ profile, userId }: Props) {
     setSkillInput("");
   }
 
-  function handleSkillKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter" || e.key === ",") {
+  function handleSkillKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       addSkillsFromInput(skillInput);
-    } else if (e.key === "Backspace" && skillInput === "" && skills.length > 0) {
+    } else if (e.key === "Backspace" && skillInput.trim() === "" && skills.length > 0) {
+      e.preventDefault();
       setSkills((prev) => prev.slice(0, -1));
     }
   }
@@ -234,26 +322,60 @@ export function ProfileForm({ profile, userId }: Props) {
     }
   }
 
+  function validateStep(step: Step): boolean {
+    if (step === 0) {
+      if (!form.first_name || !form.last_name || !form.phone_country_code || !form.phone_number) {
+        toast.error("Please fill in all required fields (marked with *).");
+        return false;
+      }
+    }
+    if (step === 2) {
+      if (!form.major || !form.grad_month_year) {
+        toast.error("Please fill in all required fields (marked with *).");
+        return false;
+      }
+    }
+    return true;
+  }
+
   const progress = ((step + 1) / STEPS.length) * 100;
 
   return (
     <div className="max-w-lg mx-auto p-4 space-y-6">
-      {/* Progress */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-xs text-slate-400 flex-wrap gap-y-1">
-          {STEPS.map((s, i) => (
-            <button
-              key={s}
-              onClick={() => setStep(i as Step)}
-              className={`transition-colors ${
-                i === step ? "text-purple-400 font-medium" : "hover:text-slate-200"
-              }`}
-            >
-              {i + 1}. {s}
-            </button>
-          ))}
-        </div>
-        <Progress value={progress} className="h-1.5 bg-white/10" />
+      {/* Stepper */}
+      <div className="flex items-center justify-between w-full mb-8 relative">
+        {/* Connector Line */}
+        <div className="absolute top-4 left-4 right-4 h-0.5 bg-white/10 -z-0" />
+        
+        {STEPS.map((s, i) => {
+          const isCompleted = i < step;
+          const isActive = i === step;
+          return (
+            <div key={s} className="flex flex-col items-center flex-1 relative z-10">
+              <button
+                onClick={() => {
+                  if (i <= step || validateStep(step)) setStep(i as Step);
+                }}
+                className={cn(
+                  "h-8 w-8 rounded-full flex items-center justify-center border-2 transition-all font-semibold text-xs",
+                  isCompleted 
+                    ? "bg-purple-600 border-purple-600 text-white" 
+                    : isActive 
+                      ? "bg-slate-950 border-purple-500 text-purple-400" 
+                      : "bg-slate-950 border-white/20 text-slate-500 hover:border-white/40"
+                )}
+              >
+                {isCompleted ? "✓" : i + 1}
+              </button>
+              <span className={cn(
+                "text-[10px] mt-2 font-medium whitespace-nowrap", 
+                isActive ? "text-white" : "text-slate-500"
+              )}>
+                {s}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       {/* ── Step 0: Personal Info ─────────────────────────────────────────── */}
@@ -278,7 +400,7 @@ export function ProfileForm({ profile, userId }: Props) {
               />
             </Field>
           </Row>
-          <Field label="Preferred Name">
+          <Field label="Preferred Name (optional)">
             <Input
               value={form.preferred_name}
               onChange={(e) => update("preferred_name", e.target.value)}
@@ -290,19 +412,17 @@ export function ProfileForm({ profile, userId }: Props) {
             <Field label="Country Code" required>
               <Select
                 value={form.phone_country_code}
-                onValueChange={(v: string | null) => update("phone_country_code", v ?? "")}
+                onValueChange={(v) => update("phone_country_code", v || "")}
               >
                 <SelectTrigger className={inputCls}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="+65">+65 (SG)</SelectItem>
-                  <SelectItem value="+852">+852 (HK)</SelectItem>
-                  <SelectItem value="+60">+60 (MY)</SelectItem>
-                  <SelectItem value="+62">+62 (ID)</SelectItem>
-                  <SelectItem value="+91">+91 (IN)</SelectItem>
-                  <SelectItem value="+1">+1 (US/CA)</SelectItem>
-                  <SelectItem value="+44">+44 (UK)</SelectItem>
+                  {PHONE_CODES.map((pc) => (
+                    <SelectItem key={pc.code} value={pc.code}>
+                      {pc.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </Field>
@@ -344,7 +464,7 @@ export function ProfileForm({ profile, userId }: Props) {
             <Field label="Residency Status">
               <Select
                 value={form.sg_residency}
-                onValueChange={(v: string | null) => update("sg_residency", v ?? "")}
+                onValueChange={(v) => update("sg_residency", v || "")}
               >
                 <SelectTrigger className={inputCls}>
                   <SelectValue placeholder="Select…" />
@@ -361,7 +481,7 @@ export function ProfileForm({ profile, userId }: Props) {
             <Field label="National Service Status">
               <Select
                 value={form.ns_status}
-                onValueChange={(v: string | null) => update("ns_status", v ?? "")}
+                onValueChange={(v) => update("ns_status", v || "")}
               >
                 <SelectTrigger className={inputCls}>
                   <SelectValue placeholder="Select…" />
@@ -376,7 +496,7 @@ export function ProfileForm({ profile, userId }: Props) {
             <Field label="University (SG)">
               <Select
                 value={form.sg_university}
-                onValueChange={(v: string | null) => update("sg_university", v ?? "")}
+                onValueChange={(v) => update("sg_university", v || "")}
               >
                 <SelectTrigger className={inputCls}>
                   <SelectValue placeholder="Select…" />
@@ -398,7 +518,7 @@ export function ProfileForm({ profile, userId }: Props) {
             <Field label="Residency Status">
               <Select
                 value={form.hk_residency}
-                onValueChange={(v: string | null) => update("hk_residency", v ?? "")}
+                onValueChange={(v) => update("hk_residency", v || "")}
               >
                 <SelectTrigger className={inputCls}>
                   <SelectValue placeholder="Select…" />
@@ -414,7 +534,7 @@ export function ProfileForm({ profile, userId }: Props) {
             <Field label="University (HK)">
               <Select
                 value={form.hk_university}
-                onValueChange={(v: string | null) => update("hk_university", v ?? "")}
+                onValueChange={(v) => update("hk_university", v || "")}
               >
                 <SelectTrigger className={inputCls}>
                   <SelectValue placeholder="Select…" />
@@ -441,7 +561,7 @@ export function ProfileForm({ profile, userId }: Props) {
             <Field label="Degree Type">
               <Select
                 value={form.degree_type}
-                onValueChange={(v: string | null) => update("degree_type", v ?? "")}
+                onValueChange={(v) => update("degree_type", v || "")}
               >
                 <SelectTrigger className={inputCls}>
                   <SelectValue placeholder="Select…" />
@@ -459,7 +579,7 @@ export function ProfileForm({ profile, userId }: Props) {
               <Input
                 value={form.major}
                 onChange={(e) => update("major", e.target.value)}
-                placeholder="Computer Science"
+                placeholder="e.g. Computer Science"
                 className={inputCls}
               />
             </Field>
@@ -477,7 +597,7 @@ export function ProfileForm({ profile, userId }: Props) {
               <Input
                 value={form.gpa}
                 onChange={(e) => update("gpa", e.target.value)}
-                placeholder="4.50 / 5.00"
+                placeholder="eg. 4.50 / 5.00"
                 className={inputCls}
               />
             </Field>
@@ -519,18 +639,19 @@ export function ProfileForm({ profile, userId }: Props) {
                   </button>
                 </span>
               ))}
-              <input
+              <textarea
                 id="skills-input"
-                type="text"
                 value={skillInput}
                 onChange={(e) => setSkillInput(e.target.value)}
                 onKeyDown={handleSkillKeyDown}
                 onBlur={() => addSkillsFromInput(skillInput)}
                 placeholder={skills.length === 0 ? "e.g. React, Python, SQL" : ""}
-                className="flex-1 min-w-[120px] bg-transparent text-white placeholder:text-slate-500 outline-none text-sm"
+                className="flex-1 min-w-[120px] bg-transparent text-white placeholder:text-slate-500 outline-none text-sm resize-none"
+                rows={1}
+                style={{ overflow: "hidden" }}
               />
             </div>
-            <p className="text-xs text-slate-500 mt-1">Type a skill and press Enter or comma to add it.</p>
+            <p className="text-xs text-slate-500 mt-1">Type skills separated by commas or newlines. Press Enter to add.</p>
           </Field>
         </fieldset>
       )}
@@ -545,29 +666,18 @@ export function ProfileForm({ profile, userId }: Props) {
 
           <Row>
             <Field label="Current City">
-              <Select
+              <SearchableSelect
                 value={form.current_city}
-                onValueChange={(v: string | null) => update("current_city", v ?? "")}
-              >
-                <SelectTrigger className={inputCls}>
-                  <SelectValue placeholder="Select…" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Singapore">Singapore</SelectItem>
-                  <SelectItem value="Hong Kong">Hong Kong</SelectItem>
-                  <SelectItem value="Kuala Lumpur">Kuala Lumpur</SelectItem>
-                  <SelectItem value="Jakarta">Jakarta</SelectItem>
-                  <SelectItem value="Bangkok">Bangkok</SelectItem>
-                  <SelectItem value="Manila">Manila</SelectItem>
-                  <SelectItem value="Ho Chi Minh City">Ho Chi Minh City</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+                onValueChange={(v) => update("current_city", v)}
+                options={COUNTRIES.map(c => c)}
+                placeholder="Search city/country..."
+                className={inputCls}
+              />
             </Field>
             <Field label="Notice Period">
               <Select
                 value={form.notice_period}
-                onValueChange={(v: string | null) => update("notice_period", v ?? "")}
+                onValueChange={(v) => update("notice_period", v || "")}
               >
                 <SelectTrigger className={inputCls}>
                   <SelectValue placeholder="Select…" />
@@ -595,7 +705,7 @@ export function ProfileForm({ profile, userId }: Props) {
             <Field label="Years of Experience">
               <Select
                 value={form.years_experience}
-                onValueChange={(v: string | null) => update("years_experience", v ?? "")}
+                onValueChange={(v) => update("years_experience", v || "")}
               >
                 <SelectTrigger className={inputCls}>
                   <SelectValue placeholder="Select…" />
@@ -643,6 +753,7 @@ export function ProfileForm({ profile, userId }: Props) {
                   value={form.expected_salary_sgd}
                   onChange={(e) => update("expected_salary_sgd", e.target.value)}
                   placeholder="3500"
+                  min="0"
                   className={inputCls}
                 />
               </Field>
@@ -652,6 +763,7 @@ export function ProfileForm({ profile, userId }: Props) {
                   value={form.expected_salary_hkd}
                   onChange={(e) => update("expected_salary_hkd", e.target.value)}
                   placeholder="12000"
+                  min="0"
                   className={inputCls}
                 />
               </Field>
@@ -671,13 +783,13 @@ export function ProfileForm({ profile, userId }: Props) {
             <p className="text-sm font-medium text-slate-300">
               Identity{" "}
               <span className="text-xs font-normal text-slate-500">
-                — used for EEO autofill and nationality fields
+                (optional—for EEO autofill)
               </span>
             </p>
             <Field label="Nationality">
               <Select
                 value={form.nationality}
-                onValueChange={(v: string | null) => update("nationality", v ?? "")}
+                onValueChange={(v) => update("nationality", v || "")}
               >
                 <SelectTrigger className={inputCls}>
                   <SelectValue placeholder="Select country…" />
@@ -693,7 +805,7 @@ export function ProfileForm({ profile, userId }: Props) {
               <Field label="Gender">
                 <Select
                   value={form.gender}
-                  onValueChange={(v: string | null) => update("gender", v ?? "")}
+                  onValueChange={(v) => update("gender", v || "")}
                 >
                   <SelectTrigger className={inputCls}>
                     <SelectValue placeholder="Select…" />
@@ -709,7 +821,7 @@ export function ProfileForm({ profile, userId }: Props) {
               <Field label="Ethnicity">
                 <Select
                   value={form.ethnicity}
-                  onValueChange={(v: string | null) => update("ethnicity", v ?? "")}
+                  onValueChange={(v) => update("ethnicity", v || "")}
                 >
                   <SelectTrigger className={inputCls}>
                     <SelectValue placeholder="Select…" />
@@ -730,7 +842,7 @@ export function ProfileForm({ profile, userId }: Props) {
               <Field label="Disability Status">
                 <Select
                   value={form.disability_status}
-                  onValueChange={(v: string | null) => update("disability_status", v ?? "")}
+                  onValueChange={(v) => update("disability_status", v || "")}
                 >
                   <SelectTrigger className={inputCls}>
                     <SelectValue placeholder="Select…" />
@@ -745,7 +857,7 @@ export function ProfileForm({ profile, userId }: Props) {
               <Field label="Veteran Status">
                 <Select
                   value={form.veteran_status}
-                  onValueChange={(v: string | null) => update("veteran_status", v ?? "")}
+                  onValueChange={(v) => update("veteran_status", v || "")}
                 >
                   <SelectTrigger className={inputCls}>
                     <SelectValue placeholder="Select…" />
@@ -761,7 +873,7 @@ export function ProfileForm({ profile, userId }: Props) {
             <Field label="How did you hear about us?">
               <Select
                 value={form.referral_source}
-                onValueChange={(v: string | null) => update("referral_source", v ?? "")}
+                onValueChange={(v) => update("referral_source", v || "")}
               >
                 <SelectTrigger className={inputCls}>
                   <SelectValue placeholder="Select…" />
@@ -829,13 +941,13 @@ export function ProfileForm({ profile, userId }: Props) {
           </div>
 
           <Field label="Default Cover Letter Paragraph">
-            <textarea
+            <Textarea
               value={form.cover_letter_default}
               onChange={(e) => update("cover_letter_default", e.target.value)}
               placeholder="I am a Computer Science student at NUS passionate about building products that solve real problems. I'm excited to bring my skills in React and Python to…"
               rows={4}
               maxLength={600}
-              className={`w-full rounded-md border px-3 py-2 text-sm resize-none ${inputCls}`}
+              className={`${inputCls} resize-none`}
             />
             <p className="text-xs text-slate-500 mt-1">
               Used as a fallback when applications ask for a cover letter. Keep it to ~2–3 sentences.{" "}
@@ -858,7 +970,9 @@ export function ProfileForm({ profile, userId }: Props) {
         )}
         {step < STEPS.length - 1 ? (
           <Button
-            onClick={() => setStep((s) => (s + 1) as Step)}
+            onClick={() => {
+              if (validateStep(step)) setStep((s) => (s + 1) as Step);
+            }}
             className="flex-1 bg-purple-600 hover:bg-purple-700"
           >
             Next

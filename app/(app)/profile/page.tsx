@@ -49,7 +49,7 @@ export default async function ProfilePage() {
         </p>
         {!complete && (
           <div className="mt-3 inline-flex items-center gap-2 text-xs bg-yellow-900/40 text-yellow-400 border border-yellow-700/50 rounded-full px-3 py-1">
-            <span>⚠️</span> Profile incomplete — fill in required fields to unlock Swipe
+            <span>⚠️</span> Profile incomplete - fill in required fields to unlock Swipe
           </div>
         )}
       </div>
