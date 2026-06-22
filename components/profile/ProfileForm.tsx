@@ -2,7 +2,6 @@
 
 import { useState, useRef, KeyboardEvent, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/lib/types";
@@ -11,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { extractTextFromPdf } from "@/lib/pdf-utils";
 
 // ── Phone country codes (ISO 3166-1 + dial code) ─────────────────────────────
 const PHONE_CODES = [
@@ -68,12 +67,12 @@ const COUNTRIES = [
 
 // ── Step configuration ────────────────────────────────────────────────────────
 const STEPS = [
+  "Resume",
   "Personal Info",
   "Location Context",
   "Academic",
   "Availability",
   "Compensation & Identity",
-  "Resume",
 ] as const;
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
@@ -276,7 +275,111 @@ export function ProfileForm({ profile, userId }: Props) {
     const { data: urlData } = supabase.storage.from("resumes").getPublicUrl(path);
     update("resume_url", urlData.publicUrl);
     toast.success("Resume uploaded!");
-    setUploading(false);
+
+    // Start auto-filling profile fields from the resume
+    try {
+      const text = await extractTextFromPdf(file);
+      if (text) {
+        toast.info("Extracting details from resume for autofill...");
+        const response = await fetch("/api/resume/parse", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data) {
+            setForm((prev) => {
+              const next = { ...prev };
+              if (data.firstName) next.first_name = data.firstName;
+              if (data.lastName) next.last_name = data.lastName;
+              if (data.email) next.email = data.email;
+              if (data.phone) {
+                let foundMatch = false;
+                for (const pc of PHONE_CODES) {
+                  if (data.phone.startsWith(pc.code)) {
+                    next.phone_country_code = pc.code;
+                    next.phone_number = data.phone.slice(pc.code.length).trim();
+                    foundMatch = true;
+                    break;
+                  }
+                }
+                if (!foundMatch) {
+                  next.phone_number = data.phone;
+                }
+              }
+              if (data.linkedinUrl) next.linkedin_url = data.linkedinUrl;
+              if (data.githubUrl) next.website_url = data.githubUrl;
+              if (data.websiteUrl && !data.githubUrl) next.website_url = data.websiteUrl;
+              if (data.gpa) next.gpa = data.gpa;
+              if (data.education?.minor) next.minor = data.education.minor;
+              if (data.targetRole) next.target_role = data.targetRole;
+              if (data.yearsExperience) next.years_experience = data.yearsExperience;
+
+              if (data.education) {
+                if (data.education.degree) next.degree_type = data.education.degree;
+                if (data.education.major) next.major = data.education.major;
+                if (data.education.graduationDate) next.grad_month_year = data.education.graduationDate;
+                
+                if (data.education.university) {
+                  const uni = data.education.university.toLowerCase();
+                  if (uni.includes("nus") || uni.includes("national university of singapore")) {
+                    next.sg_university = "NUS";
+                  } else if (uni.includes("ntu") || uni.includes("nanyang technological")) {
+                    next.sg_university = "NTU";
+                  } else if (uni.includes("smu") || uni.includes("singapore management")) {
+                    next.sg_university = "SMU";
+                  } else if (uni.includes("sutd") || uni.includes("technology and design")) {
+                    next.sg_university = "SUTD";
+                  } else if (uni.includes("sit") || uni.includes("institute of technology")) {
+                    next.sg_university = "SIT";
+                  } else if (uni.includes("hku") || uni.includes("university of hong kong")) {
+                    next.hk_university = "HKU";
+                  } else if (uni.includes("hkust") || uni.includes("science and technology")) {
+                    next.hk_university = "HKUST";
+                  } else if (uni.includes("cuhk") || uni.includes("chinese university")) {
+                    next.hk_university = "CUHK";
+                  } else if (uni.includes("polyu") || uni.includes("polytechnic")) {
+                    next.hk_university = "PolyU";
+                  } else if (uni.includes("cityu") || uni.includes("city university")) {
+                    next.hk_university = "CityU";
+                  }
+                }
+              }
+
+              return next;
+            });
+
+            if (data.skills && data.skills.length > 0) {
+              setSkills((prev) => {
+                const next = [...prev];
+                data.skills.forEach((s: string) => {
+                  if (!next.includes(s)) next.push(s);
+                });
+                return next;
+              });
+            }
+            toast.success("Autofilled form using resume details!");
+          }
+        } else {
+          const errData = await response.json();
+          console.error("Autofill parsing failed:", {
+            status: response.status,
+            error: errData.error,
+            fullResponse: errData  // Log the whole thing
+          });
+          toast.error(`Parse error: ${errData.error}`);
+        }
+      }
+    } catch (err) {
+      console.error("Autofill error:", err);
+      toast.warning("Resume uploaded, but autofill failed: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setUploading(false);
+    }
   }
 
   // ── Save profile ───────────────────────────────────────────────────────────
@@ -324,13 +427,13 @@ export function ProfileForm({ profile, userId }: Props) {
   }
 
   function validateStep(step: Step): boolean {
-    if (step === 0) {
+    if (step === 1) {
       if (!form.first_name || !form.last_name || !form.phone_country_code || !form.phone_number) {
         toast.error("Please fill in all required fields (marked with *).");
         return false;
       }
     }
-    if (step === 2) {
+    if (step === 3) {
       if (!form.major || !form.grad_month_year) {
         toast.error("Please fill in all required fields (marked with *).");
         return false;
@@ -379,8 +482,97 @@ export function ProfileForm({ profile, userId }: Props) {
         })}
       </div>
 
-      {/* ── Step 0: Personal Info ─────────────────────────────────────────── */}
-      {step === 0 && (
+      {/* ── Step 0: Resume ────────────────────────────────────────────────── */}
+    {step === 0 && (
+      <fieldset className="space-y-4">
+        <legend className="text-lg font-semibold text-white">Resume</legend>
+        <p className="text-sm text-slate-400">
+          Upload your resume — it will be attached to every application when you swipe right.{" "}
+          <span className="text-slate-500">
+            (Optional to access Swipe, required for Greenhouse/Lever submissions.)
+          </span>
+        </p>
+
+        <div
+          className="w-full max-w-md mx-auto border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 transition-colors"
+          onClick={() => !uploading && fileRef.current?.click()}
+        >
+          {form.resume_url ? (
+            <div className="space-y-2">
+              <div className="text-4xl">✅</div>
+              <p className="text-sm text-slate-300">Resume uploaded</p>
+              <p className="text-xs text-slate-500 truncate">{form.resume_url}</p>
+              <button
+                type="button"
+                className="text-xs text-purple-400 hover:underline"
+                onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
+              >
+                Replace
+              </button>
+            </div>
+          ) : uploading ? (
+            <div className="space-y-4">
+              <div className="text-4xl flex justify-center">
+                <svg
+                  className="w-12 h-12 text-purple-500 animate-spin"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+              </div>
+              <p className="text-sm text-slate-300 font-medium">Uploading resume…</p>
+              <p className="text-xs text-slate-500 mt-1">Extracting details with AI</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="text-4xl">📄</div>
+              <p className="text-sm text-slate-300">Click to upload PDF</p>
+              <p className="text-xs text-slate-500">Max 5MB</p>
+            </div>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".pdf"
+            className="hidden"
+            onChange={handleResumeUpload}
+            disabled={uploading}
+          />
+        </div>
+
+        <Field label="Default Cover Letter Paragraph">
+          <Textarea
+            value={form.cover_letter_default}
+            onChange={(e) => update("cover_letter_default", e.target.value)}
+            placeholder="I am a Computer Science student at NUS passionate about building products that solve real problems. I'm excited to bring my skills in React and Python to…"
+            rows={4}
+            maxLength={600}
+            className={`${inputCls} resize-none`}
+          />
+          <p className="text-xs text-slate-500 mt-1">
+            Used as a fallback when applications ask for a cover letter. Keep it to ~2–3 sentences.{" "}
+            {form.cover_letter_default.length}/600
+          </p>
+        </Field>
+      </fieldset>
+    )}
+
+      {/* ── Step 1: Personal Info ─────────────────────────────────────────── */}
+      {step === 1 && (
         <fieldset className="space-y-4">
           <legend className="text-lg font-semibold text-white">Personal Info</legend>
           <Row>
@@ -455,8 +647,8 @@ export function ProfileForm({ profile, userId }: Props) {
         </fieldset>
       )}
 
-      {/* ── Step 1: Location Context ──────────────────────────────────────── */}
-      {step === 1 && (
+      {/* ── Step 2: Location Context ──────────────────────────────────────── */}
+      {step === 2 && (
         <fieldset className="space-y-5">
           <legend className="text-lg font-semibold text-white">Location Context</legend>
 
@@ -554,8 +746,8 @@ export function ProfileForm({ profile, userId }: Props) {
         </fieldset>
       )}
 
-      {/* ── Step 2: Academic ──────────────────────────────────────────────── */}
-      {step === 2 && (
+      {/* ── Step 3: Academic ──────────────────────────────────────────────── */}
+      {step === 3 && (
         <fieldset className="space-y-4">
           <legend className="text-lg font-semibold text-white">Academic Details</legend>
           <Row>
@@ -657,8 +849,8 @@ export function ProfileForm({ profile, userId }: Props) {
         </fieldset>
       )}
 
-      {/* ── Step 3: Availability ──────────────────────────────────────────── */}
-      {step === 3 && (
+      {/* ── Step 4: Availability ──────────────────────────────────────────── */}
+      {step === 4 && (
         <fieldset className="space-y-4">
           <legend className="text-lg font-semibold text-white">Availability</legend>
           <p className="text-sm text-slate-400">
@@ -740,8 +932,8 @@ export function ProfileForm({ profile, userId }: Props) {
         </fieldset>
       )}
 
-      {/* ── Step 4: Compensation & Identity ──────────────────────────────── */}
-      {step === 4 && (
+      {/* ── Step 5: Compensation & Identity ──────────────────────────────── */}
+      {step === 5 && (
         <fieldset className="space-y-5">
           <legend className="text-lg font-semibold text-white">Compensation & Identity</legend>
 
@@ -891,70 +1083,6 @@ export function ProfileForm({ profile, userId }: Props) {
               </Select>
             </Field>
           </div>
-        </fieldset>
-      )}
-
-      {/* ── Step 5: Resume ────────────────────────────────────────────────── */}
-      {step === 5 && (
-        <fieldset className="space-y-4">
-          <legend className="text-lg font-semibold text-white">Resume</legend>
-          <p className="text-sm text-slate-400">
-            Upload your resume — it will be attached to every application when you swipe right.{" "}
-            <span className="text-slate-500">
-              (Optional to access Swipe, required for Greenhouse/Lever submissions.)
-            </span>
-          </p>
-
-          <div
-            className="w-full max-w-md mx-auto border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 transition-colors"
-            onClick={() => fileRef.current?.click()}
-          >
-            {form.resume_url ? (
-              <div className="space-y-2">
-                <div className="text-4xl">✅</div>
-                <p className="text-sm text-slate-300">Resume uploaded</p>
-                <p className="text-xs text-slate-500 truncate">{form.resume_url}</p>
-                <button
-                  type="button"
-                  className="text-xs text-purple-400 hover:underline"
-                  onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
-                >
-                  Replace
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <div className="text-4xl">{uploading ? "⏳" : "📄"}</div>
-                <p className="text-sm text-slate-300">
-                  {uploading ? "Uploading…" : "Click to upload PDF"}
-                </p>
-                <p className="text-xs text-slate-500">Max 5MB</p>
-              </div>
-            )}
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".pdf"
-              className="hidden"
-              onChange={handleResumeUpload}
-              disabled={uploading}
-            />
-          </div>
-
-          <Field label="Default Cover Letter Paragraph">
-            <Textarea
-              value={form.cover_letter_default}
-              onChange={(e) => update("cover_letter_default", e.target.value)}
-              placeholder="I am a Computer Science student at NUS passionate about building products that solve real problems. I'm excited to bring my skills in React and Python to…"
-              rows={4}
-              maxLength={600}
-              className={`${inputCls} resize-none`}
-            />
-            <p className="text-xs text-slate-500 mt-1">
-              Used as a fallback when applications ask for a cover letter. Keep it to ~2–3 sentences.{" "}
-              {form.cover_letter_default.length}/600
-            </p>
-          </Field>
         </fieldset>
       )}
 

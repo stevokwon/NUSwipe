@@ -34,7 +34,7 @@ export default function EmployerProfilePage() {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("employers")
         .select("*")
         .eq("id", user.id)
@@ -42,11 +42,12 @@ export default function EmployerProfilePage() {
 
       if (error) throw error;
       if (data) {
-        setProfile(data as unknown as Employer);
+        const emp = data as any;
+        setProfile(emp as Employer);
         setFormData({
-          company_name: data.company_name || "",
-          contact_name: data.contact_name || "",
-          email: data.email || "",
+          company_name: emp.company_name || "",
+          contact_name: emp.contact_name || "",
+          email: emp.email || "",
         });
       }
     } catch (err: any) {
@@ -68,7 +69,7 @@ export default function EmployerProfilePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("employers")
         .update({
           company_name: formData.company_name,

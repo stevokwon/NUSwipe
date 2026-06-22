@@ -38,9 +38,9 @@ export async function DELETE(
       );
     }
 
-    const deleteClient = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const deleteClient = (process.env.SUPABASE_SERVICE_ROLE_KEY
       ? createServiceRoleClient()
-      : authClient;
+      : authClient) as any;
     const { data: deleted, error: deleteError } = await deleteClient
       .from("jobs")
       .delete()
@@ -94,9 +94,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const updateClient = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const updateClient = (process.env.SUPABASE_SERVICE_ROLE_KEY
       ? createServiceRoleClient()
-      : authClient;
+      : authClient) as any;
 
     const { data, error } = await updateClient
       .from("jobs")

@@ -1,15 +1,18 @@
 // lib/pdf-utils.ts
-import * as pdfjsLib from "pdfjs-dist";
-
-// Set up the worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 /**
  * Extract text content from a PDF file
- * Uses pdfjs-dist for better ESM compatibility
+ * Uses pdfjs-dist dynamically to prevent SSR / DOMMatrix issues
  */
 export async function extractTextFromPdf(file: File): Promise<string> {
   try {
+    const pdfjsLib = await import("pdfjs-dist");
+    
+    // Set up the worker on client side
+    if (typeof window !== "undefined") {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+    }
+
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
@@ -26,6 +29,7 @@ export async function extractTextFromPdf(file: File): Promise<string> {
     return text;
   } catch (error) {
     console.error("PDF extraction error:", error);
-    throw new Error("Failed to extract text from PDF");
+    const errMsg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to extract text from PDF: ${errMsg}`);
   }
 }
