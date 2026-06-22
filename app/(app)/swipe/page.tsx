@@ -46,14 +46,16 @@ export default async function SwipePage() {
   }
 
   // Fetch unseen jobs server-side
-  const [appliedRes, skippedRes] = await Promise.all([
+  const [appliedRes, skippedRes, savedRes] = await Promise.all([
     supabase.from("applications").select("job_id").eq("user_id", user.id),
     supabase.from("skipped_jobs").select("job_id").eq("user_id", user.id),
+    supabase.from("saved_jobs").select("job_id").eq("user_id", user.id),
   ]);
 
   const seenIds = new Set<string>([
     ...((appliedRes.data ?? []) as { job_id: string }[]).map((r) => r.job_id),
     ...((skippedRes.data ?? []) as { job_id: string }[]).map((r) => r.job_id),
+    ...((savedRes.data ?? []) as { job_id: string }[]).map((r) => r.job_id),
   ]);
 
   const { data: jobs } = await supabase

@@ -4,7 +4,6 @@ import { useState, startTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { 
-  LayoutDashboard, 
   Briefcase, 
   UserCircle, 
   LogOut, 
@@ -86,7 +85,7 @@ export function CandidateSidebar() {
 
   const items = [
     { href: "/swipe", icon: Briefcase, label: "Jobs" },
-    { href: "/saved", icon: Bookmark, label: "Saved Jobs", disabled: true },
+    { href: "/saved", icon: Bookmark, label: "Saved Jobs" },
     { href: "/skipped", icon: History, label: "Skipped Jobs" },
     { href: "/tracker", icon: ClipboardList, label: "Tracker" },
     { href: "/actions", icon: AlertCircle, label: "Outstanding Actions", disabled: true },

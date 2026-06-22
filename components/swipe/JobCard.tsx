@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import type { Job } from "@/lib/types";
-import { getCompanyLogo } from "@/lib/utils";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 
 interface Props {
@@ -12,6 +10,7 @@ interface Props {
   onToggleExpand?: (e: React.MouseEvent) => void;
   score?: number;
   reasons?: string[];
+  status?: "saved";
 }
 
 /** Two-letter initials from company name (e.g. "Goldman Sachs" → "GS", "Google" → "G") */
@@ -24,8 +23,7 @@ function initials(company: string): string {
     .toUpperCase();
 }
 
-export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand, score, reasons }: Props) {
-  console.log("JobCard job prop:", job);
+export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand, score, reasons, status }: Props) {
   if (!job) return null;
 
   const applyOpacity = Math.min(1, Math.max(0, dragX / 80));
@@ -108,6 +106,13 @@ export function JobCard({ job, dragX = 0, expanded = false, onToggleExpand, scor
               </div>
               <div className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">
                 match
+              </div>
+            </div>
+          )}
+          {status && (
+            <div className="shrink-0 rounded-xl px-2.5 py-1 text-center bg-emerald-500/12 border border-emerald-400/30">
+              <div className="text-[9px] text-emerald-300 uppercase tracking-wider font-semibold">
+                {status}
               </div>
             </div>
           )}

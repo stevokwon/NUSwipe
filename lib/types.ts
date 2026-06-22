@@ -43,6 +43,12 @@ export interface Database {
         Update: { user_id?: string; job_id?: string; skipped_at?: string };
         Relationships: [];
       };
+      saved_jobs: {
+        Row: { user_id: string; job_id: string; saved_at: string };
+        Insert: { user_id: string; job_id: string; saved_at?: string };
+        Update: { user_id?: string; job_id?: string; saved_at?: string };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -172,6 +178,13 @@ export interface Application {
 
 // Application joined with job details (used in tracker)
 export interface ApplicationWithJob extends Application {
+  jobs: Job;
+}
+
+export interface SavedJobWithJob {
+  user_id: string;
+  job_id: string;
+  saved_at: string;
   jobs: Job;
 }
 

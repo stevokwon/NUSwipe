@@ -129,3 +129,19 @@ ALTER TABLE skipped_jobs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users manage their own skips"
   ON skipped_jobs FOR ALL USING (auth.uid() = user_id);
+
+-- ============================================================
+-- saved_jobs
+-- Tracks jobs the candidate bookmarked from the swipe stack
+-- ============================================================
+CREATE TABLE IF NOT EXISTS saved_jobs (
+  user_id   UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  job_id    UUID REFERENCES jobs(id) ON DELETE CASCADE,
+  saved_at  TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (user_id, job_id)
+);
+
+ALTER TABLE saved_jobs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage their own saved jobs"
+  ON saved_jobs FOR ALL USING (auth.uid() = user_id);

@@ -16,13 +16,15 @@ interface Props {
   isLoading?: boolean;
   scores?: Record<string, ScoreResult>;
   onSkip?: (job: Job) => Promise<void>;
+  savedJobsMode?: boolean;
+  skippedJobsMode?: boolean;
   isCircular?: boolean;
   emptyMessage?: string;
   emptyLink?: { href: string; text: string };
 }
 
-export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isCircular = false, emptyMessage = "No jobs found", emptyLink }: Props) {
-  const [jobs]          = useState<Job[]>(initialJobs);
+export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, savedJobsMode = false, skippedJobsMode = false, isCircular = false, emptyMessage = "No jobs found", emptyLink }: Props) {
+  const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [current, setCurrent]   = useState(0);
   const [drag, setDrag]         = useState({ x: 0, y: 0, active: false });
   const [appliedCount, setAppliedCount] = useState(0);
@@ -32,9 +34,12 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
   const [activeFilters, setActiveFilters] = useState<Set<number>>(new Set());
   const [minScore, setMinScore]           = useState(0);
   const [expanded, setExpanded]         = useState(false);
+  const [savedJobIds, setSavedJobIds]    = useState<Set<string>>(new Set());
 
   const cardRef  = useRef<HTMLDivElement>(null);
   const startRef = useRef({ x: 0, y: 0 });
+  const tapRef   = useRef<{ time: number; jobId: string | null }>({ time: 0, jobId: null });
+  const pointerDownRef = useRef(false);
 
   // Keep a ref to triggerSwipe so the keyboard handler never goes stale
   const triggerRef = useRef<(dir: "left" | "right") => void>(() => {});
@@ -91,25 +96,48 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
     const target = e.target as HTMLElement;
     if (target.closest("button") || target.closest("a")) return;
 
+    pointerDownRef.current = true;
     startRef.current = { x: e.clientX, y: e.clientY };
-    setDrag({ x: 0, y: 0, active: true });
-    cardRef.current?.setPointerCapture(e.pointerId);
+    setDrag({ x: 0, y: 0, active: false });
+    cardRef.current?.setPointerCapture?.(e.pointerId);
   }
 
   function onPointerMove(e: React.PointerEvent) {
+    if (!topJob || !pointerDownRef.current) return;
+    const deltaX = e.clientX - startRef.current.x;
+    const deltaY = e.clientY - startRef.current.y;
+    if (!drag.active && Math.hypot(deltaX, deltaY) > 8) {
+      setDrag({ x: deltaX, y: deltaY, active: true });
+      return;
+    }
     if (!drag.active) return;
     setDrag((d) => ({
       ...d,
-      x: e.clientX - startRef.current.x,
-      y: e.clientY - startRef.current.y,
+      x: deltaX,
+      y: deltaY,
     }));
   }
 
   function onPointerUp() {
-    if (!drag.active) return;
+    if (!topJob) return;
+    pointerDownRef.current = false;
+    if (!drag.active) {
+      const now = Date.now();
+      const isDoubleTap = tapRef.current.jobId === topJob.id && now - tapRef.current.time < 300;
+      tapRef.current = { time: now, jobId: topJob.id };
+      if (isDoubleTap) {
+        void saveJob(topJob);
+      }
+      return;
+    }
     if (drag.x > SWIPE_THRESHOLD)       triggerRef.current("right");
     else if (drag.x < -SWIPE_THRESHOLD) triggerRef.current("left");
     else setDrag({ x: 0, y: 0, active: false });
+  }
+
+  function onPointerCancel() {
+    pointerDownRef.current = false;
+    setDrag({ x: 0, y: 0, active: false });
   }
 
   // ── Swipe logic ──────────────────────────────────────────────────────────────
@@ -134,15 +162,29 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
 
     if (dir === "right") {
       setAppliedCount((c) => c + 1);
-      toast.success(`Applied to ${job.company} ✓`);   // optimistic, immediate
       setShowMatch(true);
       setTimeout(() => setShowMatch(false), 1800);
-      submitApplication(job);                          // fire-and-forget (no await)
+      toast.success(`Applied to ${job.company} ✓`);   // optimistic, immediate
+      const applied = await submitApplication(job);
+      if (savedJobsMode && applied) {
+        await unsaveJob(job);
+        removeJobFromStack(job);
+      }
+      if (skippedJobsMode && applied) {
+        await unskipJob(job);
+        removeJobFromStack(job);
+      }
     } else {
+      let skipped = false;
       if (onSkip) {
         await onSkip(job);
+        skipped = true;
       } else {
-        await recordSkip(job);
+        skipped = await recordSkip(job);
+      }
+      if (savedJobsMode && skipped) {
+        await unsaveJob(job);
+        removeJobFromStack(job);
       }
     }
   }
@@ -150,7 +192,7 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
   // Keep triggerRef current every render
   triggerRef.current = triggerSwipe;
 
-  async function submitApplication(job: Job): Promise<void> {
+  async function submitApplication(job: Job): Promise<boolean> {
     setSubmitting(true);
     try {
       const res  = await fetch("/api/apply", {
@@ -162,14 +204,14 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
 
       if (!res.ok) {
         toast.error(data.error ?? "Application failed");
-        return;
+        return false;
       }
 
       // URL-fallback job: open the external form in a new tab so the user can
       // complete it manually. The application row is already created as 'pending'.
       if (data.redirect) {
         window.open(data.redirect as string, "_blank", "noopener,noreferrer");
-        return;
+        return true;
       }
 
       if (data.extensionToken) {
@@ -188,16 +230,96 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
       if (data.visaWarning) {
         toast.warning(data.visaWarning);
       }
+      return true;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Application failed");
+      return false;
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function recordSkip(job: Job) {
-    await fetch("/api/applications", {
-      method:  "POST",
+  async function recordSkip(job: Job): Promise<boolean> {
+    try {
+      const res = await fetch("/api/applications", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ jobId: job.id }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "Could not skip job");
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not skip job");
+      return false;
+    }
+  }
+
+  async function saveJob(job: Job) {
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/saved-jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: job.id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "Could not save job");
+        return;
+      }
+
+      setSavedJobIds((prev) => new Set(prev).add(job.id));
+      if (skippedJobsMode) {
+        await unskipJob(job);
+      }
+      removeJobFromStack(job);
+      setDrag({ x: 0, y: 0, active: false });
+      setExpanded(false);
+      toast.success(`Saved ${job.company} to your jobs`);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function unsaveJob(job: Job) {
+    const res = await fetch("/api/saved-jobs", {
+      method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ jobId: job.id }),
+      body: JSON.stringify({ jobId: job.id }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Could not remove job from saved jobs");
+      return;
+    }
+  }
+
+  async function unskipJob(job: Job) {
+    const res = await fetch("/api/skipped-jobs", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId: job.id }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Could not remove job from skipped jobs");
+      return;
+    }
+  }
+
+  function removeJobFromStack(job: Job) {
+    setJobs((prev) => {
+      const next = prev.filter((item) => item.id !== job.id);
+      setCurrent((c) => (next.length === 0 ? 0 : Math.min(c, next.length - 1)));
+      return next;
     });
   }
 
@@ -404,6 +526,7 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
               onPointerLeave={onPointerUp}
+              onPointerCancel={onPointerCancel}
             >
               <JobCard
                 job={topJob}
@@ -415,6 +538,7 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
                 }}
                 score={topJob ? scores?.[topJob.id]?.score : undefined}
                 reasons={topJob ? scores?.[topJob.id]?.reasons : undefined}
+                status={savedJobIds.has(topJob.id) ? "saved" : undefined}
               />
             </div>
           </div>
@@ -542,4 +666,3 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, isC
     </div>
   );
 }
-

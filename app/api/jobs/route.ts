@@ -9,7 +9,7 @@ const JOB_COLUMNS =
   "salary_range, ats_type, ats_board_token, ats_job_id, ats_fallback_url, " +
   "logo_url, tags, created_at";
 
-// Returns active jobs the user hasn't applied to or skipped yet.
+// Returns active jobs the user hasn't applied to, skipped, or saved yet.
 export async function GET(_req: NextRequest): Promise<NextResponse> {
   const supabase = await createClient();
 
@@ -22,14 +22,16 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
   }
 
   // Fetch IDs the user has already seen (applied or skipped) — two-table lookup
-  const [appliedRes, skippedRes] = await Promise.all([
+  const [appliedRes, skippedRes, savedRes] = await Promise.all([
     supabase.from("applications").select("job_id").eq("user_id", user.id),
     supabase.from("skipped_jobs").select("job_id").eq("user_id", user.id),
+    supabase.from("saved_jobs").select("job_id").eq("user_id", user.id),
   ]);
 
   const seenIds = [
     ...((appliedRes.data ?? []) as { job_id: string }[]).map((r) => r.job_id),
     ...((skippedRes.data ?? []) as { job_id: string }[]).map((r) => r.job_id),
+    ...((savedRes.data ?? []) as { job_id: string }[]).map((r) => r.job_id),
   ];
 
   // Exclude seen jobs at DB level — avoids fetching rows only to discard them.

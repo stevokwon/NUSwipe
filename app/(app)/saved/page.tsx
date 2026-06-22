@@ -6,9 +6,16 @@ import { isProfileComplete } from "@/lib/types";
 import { scoreJob } from "@/lib/scoring/rule-based";
 import type { ScoreResult } from "@/lib/scoring/rule-based";
 
+type SavedJobRow = {
+  user_id: string;
+  job_id: string;
+  saved_at: string;
+  jobs: Job;
+};
+
 type ScoreMap = Record<string, ScoreResult>;
 
-export default async function SkippedPage() {
+export default async function SavedJobsPage() {
   const supabase = await createClient();
 
   const {
@@ -17,7 +24,6 @@ export default async function SkippedPage() {
 
   if (!user) redirect("/login");
 
-  // Check profile completeness
   const { data: profile } = await supabase
     .from("candidates")
     .select("*")
@@ -28,40 +34,33 @@ export default async function SkippedPage() {
     redirect("/profile");
   }
 
-  // Fetch skipped jobs
-  const { data: skippedData } = await supabase
-    .from("skipped_jobs")
-    .select("job_id")
-    .eq("user_id", user.id);
+  const { data, error } = await supabase
+    .from("saved_jobs")
+    .select("user_id, job_id, saved_at, jobs(*)")
+    .eq("user_id", user.id)
+    .order("saved_at", { ascending: false });
 
-  const skippedIds = new Set<string>(
-    ((skippedData ?? []) as { job_id: string }[]).map((r) => r.job_id)
-  );
+  if (error) {
+    throw new Error(error.message);
+  }
 
-  const { data: jobs } = await supabase
-    .from("jobs")
-    .select("*")
-    .eq("active", true)
-    .order("created_at", { ascending: false });
-
-  const skippedJobs = ((jobs ?? []) as Job[]).filter((j) => skippedIds.has(j.id));
-
+  const savedJobs = (data ?? []) as SavedJobRow[];
+  const jobs = savedJobs.map((row) => row.jobs);
   const scores: ScoreMap = {};
-  if (profile) {
-    for (const job of skippedJobs) {
-      scores[job.id] = scoreJob(profile as Profile, job);
-    }
+
+  for (const saved of savedJobs) {
+    scores[saved.job_id] = scoreJob(profile as Profile, saved.jobs);
   }
 
   return (
     <div className="flex flex-col items-center pt-6 pb-16 px-4">
-      <h1 className="text-2xl font-bold text-white mb-6">Skipped Jobs</h1>
-      <SwipeStack 
-        initialJobs={skippedJobs} 
-        scores={scores} 
-        skippedJobsMode
-        isCircular={true} 
-        emptyMessage="No skipped jobs"
+      <h1 className="text-2xl font-bold text-white mb-6">Saved Jobs</h1>
+      <SwipeStack
+        initialJobs={jobs}
+        scores={scores}
+        savedJobsMode
+        isCircular={true}
+        emptyMessage="No saved jobs"
         emptyLink={{ href: "/swipe", text: "Go to Jobs" }}
       />
     </div>
