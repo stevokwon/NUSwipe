@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Employer } from "@/lib/types";
@@ -17,7 +17,7 @@ export default function EmployerProfilePage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [profile, setProfile] = useState<Employer | null>(null);
+  const [, setProfile] = useState<Employer | null>(null);
 
   const [formData, setFormData] = useState({
     company_name: "",
@@ -25,7 +25,7 @@ export default function EmployerProfilePage() {
     email: "",
   });
 
-  async function loadProfile() {
+  const loadProfile = useCallback(async () => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -34,7 +34,7 @@ export default function EmployerProfilePage() {
         return;
       }
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("employers")
         .select("*")
         .eq("id", user.id)
@@ -42,7 +42,7 @@ export default function EmployerProfilePage() {
 
       if (error) throw error;
       if (data) {
-        const emp = data as any;
+       const emp = data as Employer;
         setProfile(emp as Employer);
         setFormData({
           company_name: emp.company_name || "",
@@ -50,17 +50,18 @@ export default function EmployerProfilePage() {
           email: emp.email || "",
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast.error("Failed to load profile");
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }
+  }, [router, supabase]);
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadProfile();
+  }, [loadProfile]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -69,20 +70,28 @@ export default function EmployerProfilePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("employers")
         .update({
           company_name: formData.company_name,
           contact_name: formData.contact_name,
-          updated_at: new Date().toISOString(),
         })
         .eq("id", user.id);
 
       if (error) throw error;
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              company_name: formData.company_name,
+              contact_name: formData.contact_name,
+            }
+          : prev
+      );
       toast.success("Profile updated successfully");
-      loadProfile();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update profile");
+      await loadProfile();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update profile");
     } finally {
       setSaving(false);
     }
@@ -131,7 +140,7 @@ export default function EmployerProfilePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="contact_name" className="text-slate-400 text-xs font-bold uppercase tracking-wider">Contact Person</Label>
+                  <Label htmlFor="contact_name" className="text-slate-400 text-xs font-bold uppercase tracking-wider">NAME</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
                     <Input
