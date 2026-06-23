@@ -83,6 +83,7 @@ export interface Candidate {
   grad_month_year: string | null;
   // Documents
   resume_url: string | null;
+  resume_filename?: string | null;
   linkedin_url: string | null;
   // Sprint 3
   skills: string[];

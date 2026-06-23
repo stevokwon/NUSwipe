@@ -159,8 +159,10 @@ export function ProfileForm({ profile, userId }: Props) {
   const [step, setStep] = useState<Step>(0);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [resumeAutofillOpen, setResumeAutofillOpen] = useState(false);
+  const [pendingResumeFile, setPendingResumeFile] = useState<File | null>(null);
   const [resumeFileName, setResumeFileName] = useState(() =>
-    profile.resume_url ? getFileNameFromUrl(profile.resume_url) : ""
+    profile.resume_filename ?? (profile.resume_url ? getFileNameFromUrl(profile.resume_url) : "")
   );
 
   // Form state — pre-fill with existing profile data
@@ -208,6 +210,7 @@ export function ProfileForm({ profile, userId }: Props) {
     cover_letter_default: profile.cover_letter_default ?? "",
     // Resume
     resume_url: profile.resume_url ?? "",
+    resume_filename: profile.resume_filename ?? "",
   });
 
   // Array fields
@@ -254,39 +257,7 @@ export function ProfileForm({ profile, userId }: Props) {
     setSkills((prev) => prev.filter((s) => s !== skill));
   }
 
-  // ── Resume upload ──────────────────────────────────────────────────────────
-  async function handleResumeUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Resume must be under 5MB");
-      return;
-    }
-
-    setUploading(true);
-    const supabase = createClient();
-    const path = `${userId}/resume-${Date.now()}.pdf`;
-
-    const { error } = await supabase.storage
-      .from("resumes")
-      .upload(path, file, { upsert: true });
-
-    if (error) {
-      const hint =
-        error.message.includes("Bucket not found") || error.message.includes("bucket")
-          ? ' — create a public bucket named "resumes" in Supabase Storage first'
-          : "";
-      toast.error("Upload failed: " + error.message + hint);
-      setUploading(false);
-      return;
-    }
-
-    const { data: urlData } = supabase.storage.from("resumes").getPublicUrl(path);
-    update("resume_url", urlData.publicUrl);
-    setResumeFileName(file.name);
-    toast.success("Resume uploaded!");
-
-    // Start auto-filling profile fields from the resume
+  async function autofillFromResume(file: File) {
     try {
       const text = await extractTextFromPdf(file);
       if (text) {
@@ -333,7 +304,7 @@ export function ProfileForm({ profile, userId }: Props) {
                 if (data.education.degree) next.degree_type = data.education.degree;
                 if (data.education.major) next.major = data.education.major;
                 if (data.education.graduationDate) next.grad_month_year = data.education.graduationDate;
-                
+
                 if (data.education.university) {
                   const uni = data.education.university.toLowerCase();
                   if (uni.includes("nus") || uni.includes("national university of singapore")) {
@@ -379,17 +350,73 @@ export function ProfileForm({ profile, userId }: Props) {
           console.error("Autofill parsing failed:", {
             status: response.status,
             error: errData.error,
-            fullResponse: errData  // Log the whole thing
+            fullResponse: errData,
           });
           toast.error(`Parse error: ${errData.error}`);
         }
       }
     } catch (err) {
       console.error("Autofill error:", err);
-      toast.warning("Resume uploaded, but autofill failed: " + (err instanceof Error ? err.message : String(err)));
+      toast.warning(
+        "Resume uploaded, but autofill failed: " + (err instanceof Error ? err.message : String(err))
+      );
     } finally {
       setUploading(false);
+      setPendingResumeFile(null);
     }
+  }
+
+  // ── Resume upload ──────────────────────────────────────────────────────────
+  async function handleResumeUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Resume must be under 5MB");
+      return;
+    }
+
+    setUploading(true);
+    const supabase = createClient();
+    const path = `${userId}/resume-${Date.now()}.pdf`;
+
+    const { error } = await supabase.storage
+      .from("resumes")
+      .upload(path, file, { upsert: true });
+
+    if (error) {
+      const hint =
+        error.message.includes("Bucket not found") || error.message.includes("bucket")
+          ? ' — create a public bucket named "resumes" in Supabase Storage first'
+          : "";
+      toast.error("Upload failed: " + error.message + hint);
+      setUploading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from("resumes").getPublicUrl(path);
+    const resumePayload = {
+      resume_url: urlData.publicUrl,
+      resume_filename: file.name,
+    };
+
+    const { error: profileError } = await supabase
+      .from("candidates")
+      .update(resumePayload)
+      .eq("id", userId);
+
+    if (profileError) {
+      toast.error("Upload saved to storage, but profile update failed: " + profileError.message);
+      setUploading(false);
+      return;
+    }
+
+    update("resume_url", resumePayload.resume_url);
+    update("resume_filename", resumePayload.resume_filename);
+    setResumeFileName(file.name);
+    setPendingResumeFile(file);
+    toast.success("Resume uploaded!");
+    setUploading(false);
+    setResumeAutofillOpen(true);
   }
 
   // ── Save profile ───────────────────────────────────────────────────────────
@@ -492,6 +519,43 @@ export function ProfileForm({ profile, userId }: Props) {
         })}
       </div>
 
+      {resumeAutofillOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-white">Autofill from resume?</h3>
+            <p className="mt-2 text-sm text-slate-300">
+              Use this resume to try to fill your profile fields like name, email, phone, LinkedIn, website,
+              education, target role, GPA, and skills?
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setResumeAutofillOpen(false);
+                  setPendingResumeFile(null);
+                }}
+              >
+                No
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  const file = pendingResumeFile;
+                  setResumeAutofillOpen(false);
+                  if (file) {
+                    setUploading(true);
+                    void autofillFromResume(file);
+                  }
+                }}
+              >
+                Yes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Step 0: Resume ────────────────────────────────────────────────── */}
     {step === 0 && (
       <fieldset className="space-y-4">
@@ -537,8 +601,9 @@ export function ProfileForm({ profile, userId }: Props) {
           ) : form.resume_url ? (
             <div className="space-y-2">
               <div className="text-4xl">✅</div>
-              <p className="text-sm text-slate-300">Resume uploaded</p>
-              <p className="text-xs text-slate-500 truncate">{resumeFileName || getFileNameFromUrl(form.resume_url)}</p>
+              <p className="text-sm text-slate-300 truncate">
+                {resumeFileName || getFileNameFromUrl(form.resume_url)}
+              </p>
               <button
                 type="button"
                 className="text-xs text-purple-400 hover:underline"
