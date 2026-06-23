@@ -17,7 +17,8 @@ vi.stubGlobal("fetch", mockFetch);
 
 function makeApp(
   status: ApplicationWithJob["status"],
-  ats_fallback_url: string | null = "https://careers.example.com/job/1"
+  ats_fallback_url: string | null = "https://careers.example.com/job/1",
+  overrides: Partial<ApplicationWithJob["jobs"]> = {}
 ): ApplicationWithJob {
   return {
     id: crypto.randomUUID(),
@@ -45,6 +46,7 @@ function makeApp(
       tags: [],
       active: true,
       created_at: "2025-01-01T00:00:00Z",
+      ...overrides,
     },
   };
 }
@@ -82,7 +84,26 @@ describe("ApplicationBoard — pending column", () => {
     expect(link?.getAttribute("href")).toBe(url);
   });
 
-  // Test 4: "Mark as Applied" sends PATCH with status applied
+  // Test 4: original job page link resolves ATS-specific URLs
+  it('renders a "View original job page" link for ATS-hosted jobs', () => {
+    render(
+      <ApplicationBoard
+        initialApplications={[
+          makeApp("applied", null, {
+            ats_type: "lever",
+            ats_board_token: "grab",
+            ats_job_id: "abc123",
+          }),
+        ]}
+      />
+    );
+
+    const link = screen.queryByRole("link", { name: /view original job page/i });
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute("href")).toBe("https://jobs.lever.co/grab/abc123");
+  });
+
+  // Test 5: "Mark as Applied" sends PATCH with status applied
   it('clicking "Mark as Applied" sends PATCH /api/applications with status applied', async () => {
     mockFetch.mockResolvedValue({ ok: true });
     render(<ApplicationBoard initialApplications={[makeApp("pending")]} />);
