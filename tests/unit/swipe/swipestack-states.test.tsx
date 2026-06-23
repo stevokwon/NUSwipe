@@ -31,6 +31,13 @@ const stubJob: Job = {
   created_at: "2026-01-01T00:00:00Z",
 };
 
+const secondJob: Job = {
+  ...stubJob,
+  id: "00000000-0000-0000-0000-000000000002",
+  company: "Meta",
+  role: "Frontend Engineer",
+};
+
 describe("SwipeStack states", () => {
   it("shows loading skeleton when isLoading is true", () => {
     render(<SwipeStack initialJobs={[]} isLoading />);
@@ -59,6 +66,20 @@ describe("SwipeStack states", () => {
     fireEvent.pointerUp(card as Element, { clientX: 10, clientY: 10 });
     fireEvent.pointerDown(card as Element, { clientX: 12, clientY: 12 });
     fireEvent.pointerUp(card as Element, { clientX: 12, clientY: 12 });
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith("/api/saved-jobs", expect.objectContaining({
+        method: "POST",
+      }));
+    });
+  });
+
+  it("saves a job from the Jobs tab with the star button", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ success: true }) }));
+
+    render(<SwipeStack initialJobs={[stubJob]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save job" }));
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith("/api/saved-jobs", expect.objectContaining({
@@ -214,6 +235,41 @@ describe("SwipeStack states", () => {
         method: "DELETE",
       }));
     });
+  });
+
+  it("moves a skipped job to saved jobs with the star button from skipped mode", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ success: true }) })
+      .mockResolvedValueOnce({ ok: true, json: vi.fn().mockResolvedValue({ success: true }) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<SwipeStack initialJobs={[stubJob]} skippedJobsMode />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save job" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenNthCalledWith(1, "/api/saved-jobs", expect.objectContaining({
+        method: "POST",
+      }));
+      expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/skipped-jobs", expect.objectContaining({
+        method: "DELETE",
+      }));
+    });
+  });
+
+  it("cycles to the next saved job when pressing the star button from saved mode", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<SwipeStack initialJobs={[stubJob, secondJob]} savedJobsMode />);
+
+    expect(screen.getByTestId("job-company").textContent).toContain("Google");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save job" }));
+
+    expect(screen.getByTestId("job-company").textContent).toContain("Meta");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("does not save or apply on hover movement alone", async () => {

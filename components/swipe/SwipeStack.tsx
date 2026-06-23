@@ -261,6 +261,13 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, sav
   }
 
   async function saveJob(job: Job) {
+    if (savedJobsMode) {
+      setCurrent((c) => (filteredJobs.length > 0 ? (c + 1) % filteredJobs.length : 0));
+      setDrag({ x: 0, y: 0, active: false });
+      setExpanded(false);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/saved-jobs", {
@@ -558,12 +565,13 @@ export function SwipeStack({ initialJobs, isLoading = false, scores, onSkip, sav
               </svg>
             </button>
 
-            {/* Super-like (coming soon) */}
+            {/* Save */}
             <button
-              disabled
-              aria-label="Save for later (coming soon)"
-              title="Coming soon"
-              className="w-12 h-12 rounded-full flex items-center justify-center border border-yellow-400/25 bg-white/5 opacity-40 cursor-not-allowed"
+              onClick={() => topJob && saveJob(topJob)}
+              disabled={submitting}
+              aria-label="Save job"
+              title="Save job"
+              className="w-12 h-12 rounded-full flex items-center justify-center border border-yellow-400/40 bg-white/5 shadow-lg hover:bg-yellow-950/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />

@@ -141,6 +141,12 @@ function SearchableSelect({
   );
 }
 
+function getFileNameFromUrl(value: string) {
+  const path = value.split("?")[0].split("#")[0];
+  const fileName = path.split("/").pop() ?? value;
+  return decodeURIComponent(fileName);
+}
+
 interface Props {
   profile: Profile;
   userId: string;
@@ -153,6 +159,9 @@ export function ProfileForm({ profile, userId }: Props) {
   const [step, setStep] = useState<Step>(0);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [resumeFileName, setResumeFileName] = useState(() =>
+    profile.resume_url ? getFileNameFromUrl(profile.resume_url) : ""
+  );
 
   // Form state — pre-fill with existing profile data
   const [form, setForm] = useState({
@@ -274,6 +283,7 @@ export function ProfileForm({ profile, userId }: Props) {
 
     const { data: urlData } = supabase.storage.from("resumes").getPublicUrl(path);
     update("resume_url", urlData.publicUrl);
+    setResumeFileName(file.name);
     toast.success("Resume uploaded!");
 
     // Start auto-filling profile fields from the resume
@@ -497,20 +507,7 @@ export function ProfileForm({ profile, userId }: Props) {
           className="w-full max-w-md mx-auto border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:border-purple-500 transition-colors"
           onClick={() => !uploading && fileRef.current?.click()}
         >
-          {form.resume_url ? (
-            <div className="space-y-2">
-              <div className="text-4xl">✅</div>
-              <p className="text-sm text-slate-300">Resume uploaded</p>
-              <p className="text-xs text-slate-500 truncate">{form.resume_url}</p>
-              <button
-                type="button"
-                className="text-xs text-purple-400 hover:underline"
-                onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
-              >
-                Replace
-              </button>
-            </div>
-          ) : uploading ? (
+          {uploading ? (
             <div className="space-y-4">
               <div className="text-4xl flex justify-center">
                 <svg
@@ -534,8 +531,21 @@ export function ProfileForm({ profile, userId }: Props) {
                   />
                 </svg>
               </div>
-              <p className="text-sm text-slate-300 font-medium">Uploading resume…</p>
-              <p className="text-xs text-slate-500 mt-1">Extracting details with AI</p>
+              <p className="text-sm text-slate-300 font-medium">Uploading and parsing resume…</p>
+              <p className="text-xs text-slate-500 mt-1">Extracting details and autofilling your profile</p>
+            </div>
+          ) : form.resume_url ? (
+            <div className="space-y-2">
+              <div className="text-4xl">✅</div>
+              <p className="text-sm text-slate-300">Resume uploaded</p>
+              <p className="text-xs text-slate-500 truncate">{resumeFileName || getFileNameFromUrl(form.resume_url)}</p>
+              <button
+                type="button"
+                className="text-xs text-purple-400 hover:underline"
+                onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
+              >
+                Replace
+              </button>
             </div>
           ) : (
             <div className="space-y-2">
@@ -1102,6 +1112,7 @@ export function ProfileForm({ profile, userId }: Props) {
             onClick={() => {
               if (validateStep(step)) setStep((s) => (s + 1) as Step);
             }}
+            disabled={uploading}
             className="flex-1 bg-purple-600 hover:bg-purple-700"
           >
             Next

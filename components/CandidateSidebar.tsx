@@ -7,7 +7,7 @@ import {
   Briefcase, 
   UserCircle, 
   LogOut, 
-  Sparkles,
+  Building2,
   PanelLeftClose,
   PanelLeftOpen,
   ClipboardList,
@@ -105,7 +105,7 @@ export function CandidateSidebar() {
           <>
             <Link href="/swipe" className="flex items-center gap-3 hover:opacity-80 transition-opacity overflow-hidden mr-2">
               <div className="h-10 w-10 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20 shrink-0">
-                <Sparkles className="h-6 w-6 text-white" />
+                <Building2 className="h-6 w-6 text-white" />
               </div>
               <span className="font-bold text-lg tracking-tight text-white truncate">NUSwipe</span>
             </Link>
