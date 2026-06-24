@@ -20,6 +20,8 @@ import {
   ChevronRight,
   Plus,
   ExternalLink,
+  AlertTriangle,
+  ChevronDown,
 } from "lucide-react";
 
 type InterviewSlot = {
@@ -101,9 +103,7 @@ function getEventColor(colorId?: string) {
 }
 
 function parseEventDate(event: GoogleCalendarEvent): string {
-  // All-day events have a plain date string — use it directly
   if (event.start.date) return event.start.date;
-  // Timed events have a full ISO string — convert to local date to avoid UTC shift
   if (event.start.dateTime) {
     const d = new Date(event.start.dateTime);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -123,6 +123,11 @@ export default function EmployerCalendarPage() {
   const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [savingSlot, setSavingSlot] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pickerMonth, setPickerMonth] = useState(new Date().getMonth());
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
   const [connection, setConnection] = useState<CalendarStatus>({
     connected: false,
     providerAccountEmail: null,
@@ -141,10 +146,33 @@ export default function EmployerCalendarPage() {
     timezone: "Asia/Singapore",
   });
 
-  // Calendar navigation state
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
+
+  // 24hr hour and minute columns
+  const hours24 = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+  const minutes = Array.from({ length: 60 }, (_, i) =>
+    i.toString().padStart(2, "0")
+  );
+
+  function formatTimeLabel(val: string) {
+    if (!val) return "Select time";
+    return val; // already HH:MM in 24hr
+  }
+
+  function parseTimeParts(val: string): { h: string; m: string } {
+    if (!val) return { h: "", m: "" };
+    const [h, m] = val.split(":");
+    return { h: h ?? "", m: m ?? "" };
+  }
+
+  function formatDateLabel(val: string) {
+    if (!val) return "Select date";
+    const [y, m, d] = val.split("-").map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    return dt.toLocaleDateString("en-SG", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  }
 
   useEffect(() => {
     const connected = searchParams.get("connected");
@@ -169,19 +197,16 @@ export default function EmployerCalendarPage() {
     void loadStatus();
   }, []);
 
-  // Fetch Google Calendar events when connected or month changes
   const fetchGoogleEvents = useCallback(async () => {
     if (!connection.connected) return;
     setLoadingEvents(true);
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
+      const todayNow = new Date();
+      todayNow.setHours(0, 0, 0, 0);
       const monthStart = new Date(viewYear, viewMonth, 1);
-
-      const timeMin = 
-        viewYear === today.getFullYear() && viewMonth === today.getMonth()
-          ? today.toISOString()
+      const timeMin =
+        viewYear === todayNow.getFullYear() && viewMonth === todayNow.getMonth()
+          ? todayNow.toISOString()
           : monthStart.toISOString();
       const timeMax = new Date(viewYear, viewMonth + 1, 0, 23, 59, 59).toISOString();
       const res = await fetch(
@@ -201,7 +226,6 @@ export default function EmployerCalendarPage() {
     void fetchGoogleEvents();
   }, [fetchGoogleEvents]);
 
-  // Build calendar grid
   const calendarDays = useMemo(() => {
     const firstDay = new Date(viewYear, viewMonth, 1).getDay();
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
@@ -211,11 +235,9 @@ export default function EmployerCalendarPage() {
     return days;
   }, [viewYear, viewMonth]);
 
-  // For each event, compute which dates it spans (supports multi-day events)
   const eventsByDate = useMemo(() => {
     const map: Record<string, { event: GoogleCalendarEvent; isStart: boolean; isEnd: boolean }[]> = {};
 
-    // Pure string date arithmetic — avoids timezone shifts from new Date(dateStr)
     function addDay(dateStr: string): string {
       const [y, m, d] = dateStr.split("-").map(Number);
       const dt = new Date(Date.UTC(y, m - 1, d + 1));
@@ -230,18 +252,11 @@ export default function EmployerCalendarPage() {
     for (const event of googleEvents) {
       const startRaw = event.start.dateTime ?? event.start.date ?? "";
       const endRaw = event.end.dateTime ?? event.end.date ?? "";
-
-      // For timed events, slice the local date from the ISO string directly
-      // For all-day events, Google returns plain "YYYY-MM-DD" strings
       const startDate = startRaw.slice(0, 10);
-
-      // All-day events: Google sets end to the day AFTER the last day, subtract one
       let endDate = endRaw.slice(0, 10);
       if (!event.end.dateTime && endDate > startDate) {
         endDate = subDay(endDate);
       }
-
-      // Walk every day in the range using UTC-safe arithmetic
       let cursor = startDate;
       while (cursor <= endDate) {
         if (!map[cursor]) map[cursor] = [];
@@ -251,6 +266,20 @@ export default function EmployerCalendarPage() {
     }
     return map;
   }, [googleEvents]);
+
+  // Clash detection
+  const clashingEvents = useMemo(() => {
+    if (!form.date || !form.start || !form.end) return [];
+    const dayEntries = eventsByDate[form.date] ?? [];
+    const propStart = form.date + "T" + form.start + ":00";
+    const propEnd = form.date + "T" + form.end + ":00";
+    return dayEntries
+      .map(e => e.event)
+      .filter(e => {
+        if (!e.start.dateTime || !e.end.dateTime) return false;
+        return propStart < e.end.dateTime && propEnd > e.start.dateTime;
+      });
+  }, [form.date, form.start, form.end, eventsByDate]);
 
   const nextSlot = useMemo(() => {
     return [...slots].sort((a, b) =>
@@ -344,9 +373,7 @@ export default function EmployerCalendarPage() {
   }
 
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
   const selectedEvents = selectedDate ? (eventsByDate[selectedDate] ?? []).map(e => e.event) : [];
-
   const connectedLabel = loadingStatus
     ? "Checking connection..."
     : connection.connected
@@ -443,14 +470,12 @@ export default function EmployerCalendarPage() {
               )}
             </CardHeader>
             <CardContent>
-              {/* Day headers */}
               <div className="grid grid-cols-7 mb-2">
                 {DAYS.map(d => (
                   <div key={d} className="text-center text-xs font-medium text-slate-500 py-1">{d}</div>
                 ))}
               </div>
 
-              {/* Day cells */}
               <div className="grid grid-cols-7 gap-0.5">
                 {calendarDays.map((day, i) => {
                   if (!day) return <div key={`empty-${i}`} />;
@@ -482,8 +507,6 @@ export default function EmployerCalendarPage() {
                         <div className="flex flex-col gap-[3px] w-full">
                           {dayEntries.slice(0, 2).map(({ event: e, isStart, isEnd }, idx) => {
                             const colorClass = getEventBarColor(e.colorId);
-                            // Spanning bar: no left padding/rounding on continuation days,
-                            // no right padding/rounding if event continues to next day
                             const roundedL = isStart || isFirstOfWeek ? "rounded-l-[3px]" : "rounded-l-none -ml-0.5 pl-0";
                             const roundedR = isEnd ? "rounded-r-[3px]" : "rounded-r-none -mr-0.5 pr-0";
                             return (
@@ -492,7 +515,7 @@ export default function EmployerCalendarPage() {
                                 title={e.summary}
                                 className={`h-[14px] text-[9px] font-medium leading-[14px] truncate ${colorClass} ${roundedL} ${roundedR} ${isStart || isFirstOfWeek ? "px-1" : "px-0"}`}
                               >
-                                {(isStart || isFirstOfWeek) ? e.summary : " "}
+                                {(isStart || isFirstOfWeek) ? e.summary : "\u00A0"}
                               </span>
                             );
                           })}
@@ -565,7 +588,7 @@ export default function EmployerCalendarPage() {
           </Card>
 
           {/* Schedule interview slot */}
-          <Card className="border-white/10 bg-slate-900/40 shadow-2xl">
+          <Card className="border-white/10 bg-slate-900/40 shadow-2xl overflow-visible">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock3 className="h-5 w-5 text-emerald-400" />
@@ -575,8 +598,9 @@ export default function EmployerCalendarPage() {
                 Add an interview window and push it straight to Google Calendar.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 overflow-visible">
               <div className="grid gap-4 sm:grid-cols-2">
+                {/* Title */}
                 <Field label="Interview title">
                   <Input
                     value={form.title}
@@ -585,6 +609,8 @@ export default function EmployerCalendarPage() {
                     disabled={!connection.connected}
                   />
                 </Field>
+
+                {/* Timezone */}
                 <Field label="Timezone">
                   <Input
                     value={form.timezone}
@@ -593,31 +619,230 @@ export default function EmployerCalendarPage() {
                     disabled={!connection.connected}
                   />
                 </Field>
+
+                {/* Date picker dropdown */}
                 <Field label="Date">
-                  <Input
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => setForm(prev => ({ ...prev, date: e.target.value }))}
-                    disabled={!connection.connected}
-                  />
+                  <div className="relative">
+                    <button
+                      type="button"
+                      disabled={!connection.connected}
+                      onClick={() => {
+                        setShowDatePicker(p => !p);
+                        setShowStartPicker(false);
+                        setShowEndPicker(false);
+                        setPickerMonth(viewMonth);
+                        setPickerYear(viewYear);
+                      }}
+                      className="w-full flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-left disabled:opacity-50 hover:bg-accent transition-colors"
+                    >
+                      <span className={form.date ? "text-white" : "text-slate-400"}>{formatDateLabel(form.date)}</span>
+                      <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
+                    </button>
+                    {showDatePicker && (
+                      <div className="absolute z-[100] mt-1 w-72 rounded-xl border border-white/10 bg-slate-900 shadow-2xl p-3">
+                        {/* Mini calendar header */}
+                        <div className="flex items-center justify-between mb-2">
+                          <button
+                            type="button"
+                            onClick={() => { if (pickerMonth === 0) { setPickerMonth(11); setPickerYear(y => y - 1); } else setPickerMonth(m => m - 1); }}
+                            className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+                          <span className="text-sm font-medium text-white">{MONTHS[pickerMonth]} {pickerYear}</span>
+                          <button
+                            type="button"
+                            onClick={() => { if (pickerMonth === 11) { setPickerMonth(0); setPickerYear(y => y + 1); } else setPickerMonth(m => m + 1); }}
+                            className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        </div>
+                        {/* Day headers */}
+                        <div className="grid grid-cols-7 mb-1">
+                          {DAYS.map(d => <div key={d} className="text-center text-[10px] text-slate-500 py-0.5">{d}</div>)}
+                        </div>
+                        {/* Day cells */}
+                        <div className="grid grid-cols-7 gap-0.5">
+                          {(() => {
+                            const firstDay = new Date(pickerYear, pickerMonth, 1).getDay();
+                            const daysInMonth = new Date(pickerYear, pickerMonth + 1, 0).getDate();
+                            const cells: (number | null)[] = [];
+                            for (let i = 0; i < firstDay; i++) cells.push(null);
+                            for (let i = 1; i <= daysInMonth; i++) cells.push(i);
+                            return cells.map((d, i) => {
+                              if (!d) return <div key={`ep-${i}`} />;
+                              const ds = `${pickerYear}-${String(pickerMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                              const isSel = ds === form.date;
+                              const isT = ds === todayStr;
+                              const isPast = ds < todayStr;
+                              return (
+                                <button
+                                  key={d}
+                                  type="button"
+                                  disabled={isPast}
+                                  onClick={() => { setForm(prev => ({ ...prev, date: ds })); setShowDatePicker(false); }}
+                                  className={`rounded-lg text-xs py-1 transition-colors disabled:opacity-30 disabled:cursor-not-allowed
+                                    ${isSel ? "bg-indigo-500 text-white font-semibold" : isT ? "ring-1 ring-indigo-500/50 text-indigo-300 hover:bg-white/10" : "text-slate-300 hover:bg-white/10"}`}
+                                >
+                                  {d}
+                                </button>
+                              );
+                            });
+                          })()}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowDatePicker(false)}
+                          className="mt-2 w-full text-xs text-slate-500 hover:text-slate-300 text-center py-1"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </Field>
+
+                {/* Start time — 24hr hour + minute columns */}
                 <Field label="Start time">
-                  <Input
-                    type="time"
-                    value={form.start}
-                    onChange={(e) => setForm(prev => ({ ...prev, start: e.target.value }))}
-                    disabled={!connection.connected}
-                  />
+                  <div className="relative">
+                    <button
+                      type="button"
+                      disabled={!connection.connected}
+                      onClick={() => { setShowStartPicker(p => !p); setShowEndPicker(false); setShowDatePicker(false); }}
+                      className="w-full flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-left disabled:opacity-50 hover:bg-accent transition-colors"
+                    >
+                      <span className={form.start ? "text-white" : "text-slate-400"}>{form.start || "HH : MM"}</span>
+                      <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
+                    </button>
+                    {showStartPicker && (
+                      <div className="absolute z-[100] mt-1 left-0 rounded-xl border border-white/10 bg-slate-900 shadow-2xl">
+                        <div className="flex">
+                          {/* Hour column */}
+                          <div className="flex flex-col border-r border-white/10">
+                            <div className="text-[10px] text-slate-500 text-center px-3 py-1.5 border-b border-white/10 font-medium">HH</div>
+                            <div className="h-44 overflow-y-auto py-1 w-16 picker-scroll">
+                              {hours24.map(h => (
+                                <button key={h} type="button"
+                                  onClick={() => {
+                                    const m = parseTimeParts(form.start).m || "00";
+                                    const val = `${h}:${m}`;
+                                    setForm(prev => ({ ...prev, start: val, end: "" }));
+                                  }}
+                                  className={`w-full text-center py-1.5 text-sm transition-colors
+                                    ${parseTimeParts(form.start).h === h ? "bg-indigo-500/20 text-indigo-300 font-medium" : "text-slate-300 hover:bg-white/10"}`}
+                                >{h}</button>
+                              ))}
+                            </div>
+                          </div>
+                          {/* Minute column */}
+                          <div className="flex flex-col">
+                            <div className="text-[10px] text-slate-500 text-center px-3 py-1.5 border-b border-white/10 font-medium">MM</div>
+                            <div className="h-44 overflow-y-auto py-1 w-16 picker-scroll">
+                              {minutes.map(m => (
+                                <button key={m} type="button"
+                                  onClick={() => {
+                                    const h = parseTimeParts(form.start).h || "09";
+                                    const val = `${h}:${m}`;
+                                    setForm(prev => ({ ...prev, start: val, end: "" }));
+                                    setShowStartPicker(false);
+                                  }}
+                                  className={`w-full text-center py-1.5 text-sm transition-colors
+                                    ${parseTimeParts(form.start).m === m ? "bg-indigo-500/20 text-indigo-300 font-medium" : "text-slate-300 hover:bg-white/10"}`}
+                                >{m}</button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </Field>
+
+                {/* End time — 24hr hour + minute columns */}
                 <Field label="End time">
-                  <Input
-                    type="time"
-                    value={form.end}
-                    onChange={(e) => setForm(prev => ({ ...prev, end: e.target.value }))}
-                    disabled={!connection.connected}
-                  />
+                  <div className="relative">
+                    <button
+                      type="button"
+                      disabled={!connection.connected}
+                      onClick={() => { setShowEndPicker(p => !p); setShowStartPicker(false); setShowDatePicker(false); }}
+                      className="w-full flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-left disabled:opacity-50 hover:bg-accent transition-colors"
+                    >
+                      <span className={form.end ? "text-white" : "text-slate-400"}>{form.end || "HH : MM"}</span>
+                      <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
+                    </button>
+                    {showEndPicker && (
+                      <div className="absolute z-[100] mt-1 left-0 rounded-xl border border-white/10 bg-slate-900 shadow-2xl">
+                        <div className="flex">
+                          {/* Hour column — only hours >= start hour */}
+                          <div className="flex flex-col border-r border-white/10">
+                            <div className="text-[10px] text-slate-500 text-center px-3 py-1.5 border-b border-white/10 font-medium">HH</div>
+                            <div className="h-44 overflow-y-auto py-1 w-16 picker-scroll">
+                              {hours24.filter(h => !form.start || h >= parseTimeParts(form.start).h).map(h => (
+                                <button key={h} type="button"
+                                  onClick={() => {
+                                    const m = parseTimeParts(form.end).m || "00";
+                                    setForm(prev => ({ ...prev, end: `${h}:${m}` }));
+                                  }}
+                                  className={`w-full text-center py-1.5 text-sm transition-colors
+                                    ${parseTimeParts(form.end).h === h ? "bg-indigo-500/20 text-indigo-300 font-medium" : "text-slate-300 hover:bg-white/10"}`}
+                                >{h}</button>
+                              ))}
+                            </div>
+                          </div>
+                          {/* Minute column */}
+                          <div className="flex flex-col">
+                            <div className="text-[10px] text-slate-500 text-center px-3 py-1.5 border-b border-white/10 font-medium">MM</div>
+                            <div className="h-44 overflow-y-auto py-1 w-16 picker-scroll">
+                              {minutes.filter(m => {
+                                if (!form.start || !form.end) return true;
+                                const { h: sh, m: sm } = parseTimeParts(form.start);
+                                const { h: eh } = parseTimeParts(form.end);
+                                // if same hour as start, only allow minutes > start minute
+                                return eh !== sh || m > (sm || "00");
+                              }).map(m => (
+                                <button key={m} type="button"
+                                  onClick={() => {
+                                    const h = parseTimeParts(form.end).h || "10";
+                                    setForm(prev => ({ ...prev, end: `${h}:${m}` }));
+                                    setShowEndPicker(false);
+                                  }}
+                                  className={`w-full text-center py-1.5 text-sm transition-colors
+                                    ${parseTimeParts(form.end).m === m ? "bg-indigo-500/20 text-indigo-300 font-medium" : "text-slate-300 hover:bg-white/10"}`}
+                                >{m}</button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </Field>
               </div>
+
+              {/* Clash warning */}
+              {clashingEvents.length > 0 && (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+                  <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-300">Time clash detected</p>
+                    <p className="text-xs text-amber-400/80 mt-0.5">
+                      This slot overlaps with {clashingEvents.length === 1 ? "an existing event" : `${clashingEvents.length} existing events`}:
+                    </p>
+                    <ul className="mt-1 space-y-0.5">
+                      {clashingEvents.map(e => (
+                        <li key={e.id} className="text-xs text-amber-300 flex items-center gap-1.5">
+                          <span className="w-1 h-1 rounded-full bg-amber-400 shrink-0" />
+                          {e.summary}
+                          {e.start.dateTime && (
+                            <span className="text-amber-400/60">· {parseEventTime(e.start.dateTime)}–{parseEventTime(e.end.dateTime)}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
 
               <Button type="button" onClick={addSlot} disabled={!connection.connected || savingSlot}>
                 {savingSlot ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
@@ -734,9 +959,7 @@ export default function EmployerCalendarPage() {
                 <Sparkles className="h-5 w-5 text-amber-400" />
                 Future calendar support
               </CardTitle>
-              <CardDescription>
-                More providers coming soon.
-              </CardDescription>
+              <CardDescription>More providers coming soon.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {FUTURE_PROVIDERS.map((provider) => (
