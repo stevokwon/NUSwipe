@@ -25,6 +25,16 @@ export default function EmployerProfilePage() {
     email: "",
   });
 
+  type EmployerUpdatePayload = {
+    company_name: string;
+    contact_name: string | null;
+  };
+  type EmployerUpdateQuery = {
+    update(values: EmployerUpdatePayload): {
+      eq(column: "id", value: string): Promise<{ error: { message: string } | null }>;
+    };
+  };
+
   const loadProfile = useCallback(async () => {
     try {
       setLoading(true);
@@ -70,8 +80,9 @@ export default function EmployerProfilePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { error } = await supabase
-        .from("employers")
+      const { error } = await (
+        supabase.from("employers") as unknown as EmployerUpdateQuery
+      )
         .update({
           company_name: formData.company_name,
           contact_name: formData.contact_name,

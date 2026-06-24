@@ -9,6 +9,7 @@ import {
   UserCircle, 
   LogOut, 
   Building2,
+  CalendarDays,
   PanelLeftClose,
   PanelLeftOpen
 } from "lucide-react";
@@ -68,6 +69,7 @@ export function EmployerSidebar() {
   const items = [
     { href: "/employer/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { href: "/employer/jobs", icon: Briefcase, label: "Jobs" },
+    { href: "/employer/calendar", icon: CalendarDays, label: "Calendar" },
   ];
 
   return (

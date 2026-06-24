@@ -53,3 +53,5 @@ graphify-out/
 # Agent context — sprint and task tracking (committed intentionally)
 agent-context/
 
+
+/lib/generated/prisma

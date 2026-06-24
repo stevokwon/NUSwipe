@@ -25,6 +25,12 @@ export interface Database {
         Update: Partial<Employer>;
         Relationships: [];
       };
+      calendar_connections: {
+        Row: CalendarConnection;
+        Insert: Omit<CalendarConnection, "id" | "connected_at" | "updated_at"> & { id?: string };
+        Update: Partial<Omit<CalendarConnection, "id" | "employer_id" | "connected_at">> & { updated_at?: string };
+        Relationships: [];
+      };
       jobs: {
         Row: Job;
         Insert: Omit<Job, "id" | "created_at"> & { id?: string };
@@ -125,6 +131,24 @@ export interface Employer {
   email: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type CalendarProvider = "google";
+
+export interface CalendarConnection {
+  id: string;
+  employer_id: string;
+  provider: CalendarProvider;
+  provider_account_email: string | null;
+  access_token: string;
+  refresh_token: string | null;
+  scope: string | null;
+  token_type: string | null;
+  expires_at: string | null;
+  calendar_id: string | null;
+  connected_at: string;
+  updated_at: string;
+  last_synced_at: string | null;
 }
 
 export type AtsType = "greenhouse" | "lever" | "url";
