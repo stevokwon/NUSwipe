@@ -98,42 +98,42 @@ export type Database = {
       }
       calendar_connections: {
         Row: {
+          access_token: string
           calendar_id: string | null
           created_at: string
           employer_id: string
-          google_calendar_refresh_token: string | null
-          google_calendar_token: string
+          expires_at: string | null
           id: string
           last_synced_at: string | null
           provider: string | null
           provider_account_email: string
-          token_expires_at: string | null
+          refresh_token: string | null
           updated_at: string
         }
         Insert: {
+          access_token: string
           calendar_id?: string | null
           created_at?: string
           employer_id: string
-          google_calendar_refresh_token?: string | null
-          google_calendar_token: string
-          id: string
-          last_synced_at?: string | null
-          provider?: string | null
-          provider_account_email?: string
-          token_expires_at?: string | null
-          updated_at?: string
-        }
-        Update: {
-          calendar_id?: string | null
-          created_at?: string
-          employer_id?: string
-          google_calendar_refresh_token?: string | null
-          google_calendar_token?: string
+          expires_at?: string | null
           id?: string
           last_synced_at?: string | null
           provider?: string | null
           provider_account_email?: string
-          token_expires_at?: string | null
+          refresh_token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          calendar_id?: string | null
+          created_at?: string
+          employer_id?: string
+          expires_at?: string | null
+          id?: string
+          last_synced_at?: string | null
+          provider?: string | null
+          provider_account_email?: string
+          refresh_token?: string | null
           updated_at?: string
         }
         Relationships: [

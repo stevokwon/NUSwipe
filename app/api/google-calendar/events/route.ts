@@ -140,8 +140,6 @@ export async function POST(req: NextRequest) {
       .update({
         access_token: accessToken,
         expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
-        scope: refreshed.scope ?? connection.scope,
-        token_type: refreshed.token_type ?? connection.token_type,
         updated_at: new Date().toISOString(),
       })
       .eq("employer_id", user.id)

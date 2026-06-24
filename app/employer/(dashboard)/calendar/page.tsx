@@ -174,7 +174,15 @@ export default function EmployerCalendarPage() {
     if (!connection.connected) return;
     setLoadingEvents(true);
     try {
-      const timeMin = new Date(viewYear, viewMonth, 1).toISOString();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const monthStart = new Date(viewYear, viewMonth, 1);
+
+      const timeMin = 
+        viewYear === today.getFullYear() && viewMonth === today.getMonth()
+          ? today.toISOString()
+          : monthStart.toISOString();
       const timeMax = new Date(viewYear, viewMonth + 1, 0, 23, 59, 59).toISOString();
       const res = await fetch(
         `/api/google-calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`
