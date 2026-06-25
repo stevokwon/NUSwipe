@@ -12,7 +12,7 @@ function DropdownMenuContent({
   className,
   sideOffset = 4,
   ...props
-}: MenuPrimitive.Popup.Props) {
+}: MenuPrimitive.Positioner.Props & MenuPrimitive.Popup.Props) {
   return (
     <MenuPrimitive.Portal>
       <MenuPrimitive.Positioner sideOffset={sideOffset}>
