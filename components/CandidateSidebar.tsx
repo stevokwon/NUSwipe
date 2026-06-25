@@ -13,6 +13,7 @@ import {
   ClipboardList,
   History,
   AlertCircle,
+  Calendar,
   Bookmark
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -89,6 +90,7 @@ export function CandidateSidebar() {
     { href: "/skipped", icon: History, label: "Skipped Jobs" },
     { href: "/tracker", icon: ClipboardList, label: "Tracker" },
     { href: "/actions", icon: AlertCircle, label: "Outstanding Actions", disabled: true },
+    { href: "/calendar", icon: Calendar, label: "Calendar" },
   ];
 
 
