@@ -183,6 +183,46 @@ export default function CalendarPage({ role }: Props) {
     }
   }
 
+  async function editEvent(id: string, provider: Provider | undefined, newTitle: string) {
+    if (!provider) return;
+    try {
+      const route = provider === "google"
+        ? `/api/google-calendar/events?eventId=${id}`
+        : `/api/ms-calendar/events?eventId=${id}`;
+      const res = await fetch(route, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newTitle }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error ?? "Failed to update event");
+      }
+      toast.success("Event updated");
+      void refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update event");
+    }
+  }
+
+  async function deleteEvent(id: string, provider: Provider | undefined) {
+    if (!provider) return;
+    try {
+      const route = provider === "google"
+        ? `/api/google-calendar/events?eventId=${id}`
+        : `/api/ms-calendar/events?eventId=${id}`;
+      const res = await fetch(route, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error ?? "Failed to delete event");
+      }
+      toast.success("Event deleted");
+      void refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete event");
+    }
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   const heading = role === "employer" ? "Interview scheduling" : "My interviews";
   const subheading = role === "employer"
@@ -238,6 +278,8 @@ export default function CalendarPage({ role }: Props) {
             onNextMonth={nextMonth}
             onDayClick={handleDayClick}
             onScheduleClick={date => setForm(prev => ({ ...prev, date }))}
+            onEditEvent={editEvent}
+            onDeleteEvent={deleteEvent}
           />
 
           {/* Schedule form */}

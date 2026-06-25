@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
-import type { CalendarEvent, Provider } from "../../types";
+import type { CalendarEvent, Provider } from "../types";
 
 type Options = {
   googleConnected: boolean;

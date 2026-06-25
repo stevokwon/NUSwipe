@@ -194,6 +194,97 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ id: created.id, htmlLink: created.webLink });
 }
 
+// ─── PATCH /api/ms-calendar/events ───────────────────────────────────────────
+// Query params: eventId
+// Body: { title?, date?, start?, end? }
+
+export async function PATCH(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const token = await getValidToken(user.id);
+  if (!token) return NextResponse.json({ error: "Microsoft Calendar not connected" }, { status: 400 });
+
+  const { searchParams } = new URL(request.url);
+  const eventId = searchParams.get("eventId");
+  if (!eventId) return NextResponse.json({ error: "eventId query param is required" }, { status: 400 });
+
+  const body = await request.json() as {
+    title?: string;
+    date?: string;
+    start?: string;
+    end?: string;
+  };
+
+  const patch: Record<string, unknown> = {};
+  if (body.title?.trim()) patch.subject = body.title.trim();
+  if (body.date && body.start) {
+    patch.start = {
+      dateTime: `${body.date}T${body.start}:00`,
+      timeZone: "Singapore Standard Time",
+    };
+  }
+  if (body.date && body.end) {
+    patch.end = {
+      dateTime: `${body.date}T${body.end}:00`,
+      timeZone: "Singapore Standard Time",
+    };
+  }
+
+  const res = await fetch(`${GRAPH_BASE}/me/events/${encodeURIComponent(eventId)}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(patch),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return NextResponse.json(
+      { error: err.error?.message ?? "Failed to update event" },
+      { status: res.status }
+    );
+  }
+
+  const updated: MsEvent = await res.json();
+  return NextResponse.json({ id: updated.id, htmlLink: updated.webLink ?? null });
+}
+
+// ─── DELETE /api/ms-calendar/events ──────────────────────────────────────────
+// Query params: eventId
+
+export async function DELETE(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const token = await getValidToken(user.id);
+  if (!token) return NextResponse.json({ error: "Microsoft Calendar not connected" }, { status: 400 });
+
+  const { searchParams } = new URL(request.url);
+  const eventId = searchParams.get("eventId");
+  if (!eventId) return NextResponse.json({ error: "eventId query param is required" }, { status: 400 });
+
+  const res = await fetch(`${GRAPH_BASE}/me/events/${encodeURIComponent(eventId)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  // Graph returns 204 No Content on success
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return NextResponse.json(
+      { error: err.error?.message ?? "Failed to delete event" },
+      { status: res.status }
+    );
+  }
+
+  return new NextResponse(null, { status: 204 });
+}
+
 // ─── Types & normalisation ────────────────────────────────────────────────────
 
 type MsEvent = {

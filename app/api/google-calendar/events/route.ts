@@ -11,6 +11,7 @@ type EventBody = {
   start?: string;
   end?: string;
   timezone?: string;
+  eventId?: string;
 };
 
 function combineDateTime(date: string, time: string) {
@@ -175,4 +176,153 @@ export async function POST(req: NextRequest) {
     htmlLink: event.htmlLink ?? null,
     status: event.status ?? "confirmed",
   });
+}
+
+export async function PATCH(req: NextRequest) {
+  const supabase = await createClient();
+  const service = createServiceRoleClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: employer } = await service.from("employers").select("id").eq("id", user.id).maybeSingle();
+  if (!employer) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { searchParams } = new URL(req.url);
+  const eventId = searchParams.get("eventId");
+  const body = (await req.json()) as Partial<EventBody>;
+  const { title, date, start, end, timezone = "Asia/Singapore" } = body;
+
+  if (!eventId) {
+    return NextResponse.json({ error: "eventId is required" }, { status: 400 });
+  }
+
+  const { data: connection, error: connectionError } = await service
+    .from("calendar_connections")
+    .select("*")
+    .eq("employer_id", user.id)
+    .eq("provider", "google")
+    .maybeSingle();
+
+  if (connectionError) return NextResponse.json({ error: connectionError.message }, { status: 500 });
+  if (!connection) return NextResponse.json({ error: "Google Calendar not connected" }, { status: 409 });
+
+  let accessToken = connection.access_token;
+  const expiresAt = connection.expires_at ? new Date(connection.expires_at).getTime() : 0;
+  const shouldRefresh = !expiresAt || expiresAt <= Date.now() + 60_000;
+
+  if (shouldRefresh) {
+    if (!connection.refresh_token) {
+      return NextResponse.json({ error: "Missing refresh token" }, { status: 409 });
+    }
+    const refreshed = await refreshGoogleAccessToken(connection.refresh_token);
+    accessToken = refreshed.access_token;
+    await service.from("calendar_connections").update({
+      access_token: accessToken,
+      expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq("employer_id", user.id).eq("provider", "google");
+  }
+
+  // Build partial update — only include fields that were provided
+  const patch: Record<string, unknown> = {};
+  if (title?.trim()) patch.summary = title.trim();
+  if (date?.trim() && start?.trim()) patch.start = { dateTime: combineDateTime(date, start), timeZone: timezone };
+  if (date?.trim() && end?.trim()) patch.end = { dateTime: combineDateTime(date, end), timeZone: timezone };
+
+  const calendarId = encodeURIComponent(connection.calendar_id ?? "primary");
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(eventId)}`;
+
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(patch),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    return NextResponse.json({ error: err.error?.message ?? "Failed to update event" }, { status: res.status });
+  }
+
+  const event = await res.json();
+
+  await service.from("calendar_connections").update({
+    last_synced_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }).eq("employer_id", user.id).eq("provider", "google");
+
+  return NextResponse.json({
+    id: event.id,
+    htmlLink: event.htmlLink ?? null,
+    status: event.status ?? "confirmed",
+  });
+}
+
+export async function DELETE(req: NextRequest) {
+  const supabase = await createClient();
+  const service = createServiceRoleClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: employer } = await service.from("employers").select("id").eq("id", user.id).maybeSingle();
+  if (!employer) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { searchParams } = new URL(req.url);
+  const eventId = searchParams.get("eventId");
+
+  if (!eventId) {
+    return NextResponse.json({ error: "eventId query param is required" }, { status: 400 });
+  }
+
+  const { data: connection, error: connectionError } = await service
+    .from("calendar_connections")
+    .select("*")
+    .eq("employer_id", user.id)
+    .eq("provider", "google")
+    .maybeSingle();
+
+  if (connectionError) return NextResponse.json({ error: connectionError.message }, { status: 500 });
+  if (!connection) return NextResponse.json({ error: "Google Calendar not connected" }, { status: 409 });
+
+  let accessToken = connection.access_token;
+  const expiresAt = connection.expires_at ? new Date(connection.expires_at).getTime() : 0;
+  const shouldRefresh = !expiresAt || expiresAt <= Date.now() + 60_000;
+
+  if (shouldRefresh) {
+    if (!connection.refresh_token) {
+      return NextResponse.json({ error: "Missing refresh token" }, { status: 409 });
+    }
+    const refreshed = await refreshGoogleAccessToken(connection.refresh_token);
+    accessToken = refreshed.access_token;
+    await service.from("calendar_connections").update({
+      access_token: accessToken,
+      expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq("employer_id", user.id).eq("provider", "google");
+  }
+
+  const calendarId = encodeURIComponent(connection.calendar_id ?? "primary");
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${encodeURIComponent(eventId)}`;
+
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  // Google returns 204 No Content on success
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return NextResponse.json({ error: err.error?.message ?? "Failed to delete event" }, { status: res.status });
+  }
+
+  await service.from("calendar_connections").update({
+    last_synced_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }).eq("employer_id", user.id).eq("provider", "google");
+
+  return new NextResponse(null, { status: 204 });
 }
