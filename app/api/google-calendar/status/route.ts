@@ -21,7 +21,7 @@ export async function GET() {
   const { data: connection, error } = await service
     .from("calendar_connections")
     .select("provider_account_email, calendar_id, last_synced_at")
-    .eq("employer_id", user.id)
+    .eq("user_id", user.id)
     .eq("provider", "google")
     .maybeSingle();
 

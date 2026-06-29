@@ -35,13 +35,13 @@ export async function GET(request: NextRequest) {
 
   const service = createServiceRoleClient();
   await service.from("calendar_connections").upsert({
-    employer_id: user.id,
+    user_id: user.id,
     provider: "microsoft",
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token ?? null,
     expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
     updated_at: new Date().toISOString(),
-  } as any, { onConflict: "employer_id" });  // note: you'll need a composite unique key on (employer_id, provider) if supporting multiple providers
+  } as any, { onConflict: "user_id" });  // note: you'll need a composite unique key on (user_id, provider) if supporting multiple providers
 
   return NextResponse.redirect(new URL("/employer/calendar?connected=1", request.url));
 }

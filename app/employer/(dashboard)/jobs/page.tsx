@@ -9,10 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Briefcase, Users, Plus, RefreshCw } from "lucide-react";
+import { Briefcase, Users, Plus, RefreshCw, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { JobActionsMenu } from "@/components/employer/JobActionsMenu";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
+import { ManageSlotsModal } from "@/components/employer/ManageSlotsModal";
+import { InviteInterviewModal } from "@/components/employer/InviteInterviewModal";
+
 
 export default function EmployerJobsPage() {
   const router = useRouter();
@@ -23,6 +26,13 @@ export default function EmployerJobsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [showInactiveJobs, setShowInactiveJobs] = useState(false);
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
+  const [manageSlotsOpen, setManageSlotsOpen] = useState(false);
+  const [inviteModal, setInviteModal] = useState<{
+    candidateId: string;
+    candidateName: string;
+    candidateEmail: string;
+    applicationId: string;
+  } | null>(null);
 
   function toggleJobExpansion(jobId: string) {
     setExpandedJobs((prev) => {
@@ -208,6 +218,15 @@ export default function EmployerJobsPage() {
                             <Users className="h-4 w-4" />
                             <span className="text-sm">{count} Applicants</span>
                           </div>
+                          <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setManageSlotsOpen(true)}
+                              className="text-indigo-400 hover:text-indigo-300 border border-white/10 text-xs gap-1.5"
+                            >
+                              <Calendar className="h-3.5 w-3.5" />
+                              Manage Slots
+                            </Button>
                           {job.salary_range && (
                             <p className="text-sm text-slate-300 font-semibold">{job.salary_range}</p>
                           )}
@@ -261,6 +280,23 @@ export default function EmployerJobsPage() {
           </div>
         )}
       </div>
+      {/* Modals */}
+      <ManageSlotsModal
+        open={manageSlotsOpen}
+        onClose={() => setManageSlotsOpen(false)}
+      />
+
+      {inviteModal && (
+        <InviteInterviewModal
+          open={!!inviteModal}
+          onClose={() => setInviteModal(null)}
+          candidateId={inviteModal.candidateId}
+          candidateName={inviteModal.candidateName}
+          candidateEmail={inviteModal.candidateEmail}
+          applicationId={inviteModal.applicationId}
+          employerCompany="Your Company"
+        />
+      )}
     </div>
   );
 }

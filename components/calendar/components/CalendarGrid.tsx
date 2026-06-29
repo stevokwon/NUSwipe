@@ -260,10 +260,10 @@ export function CalendarGrid({
                       >
                         <MoreHorizontal className="h-3.5 w-3.5" />
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-36">
+                      <DropdownMenuContent align="end" className="w-36 bg-slate-800 border-white/10">
                         <DropdownMenuItem
                           onClick={() => setEditingEvent(event)}
-                          className="gap-2 cursor-pointer"
+                          className="gap-2 cursor-pointer text-blue-400 focus:bg-blue-500/10 focus:text-blue-400"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                           Edit

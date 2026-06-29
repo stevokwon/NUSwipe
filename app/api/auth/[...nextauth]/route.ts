@@ -24,7 +24,7 @@ export const authOptions: NextAuthOptions = {
         try {
           const supabase = createServiceRoleClient();
           const { error } = await supabase.from("calendar_connections").upsert({
-            employer_id: user.id,
+            user_id: user.id,
             google_calendar_token: account.access_token,
             google_calendar_refresh_token: account.refresh_token || null,
             provider_account_email: user.email,

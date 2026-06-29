@@ -11,6 +11,7 @@ import { ConnectionCard, GoogleIcon, MicrosoftIcon } from "./components/Connecti
 import { CalendarGrid } from "./components/CalendarGrid";
 import { ScheduleForm } from "./components/ScheduleForm";
 import { NextInterviewCard, UpcomingEventsCard, FutureProvidersCard } from "./components/SidebarCards";
+import { BookInterviewModal } from "@/components/candidate/BookInterviewModal";
 
 import type { CalendarStatus, InterviewSlot, Provider } from "./types";
 
@@ -53,6 +54,10 @@ export default function CalendarPage({ role }: Props) {
   const [showEndPicker, setShowEndPicker]     = useState(false);
   const [pickerMonth, setPickerMonth] = useState(today.getMonth());
   const [pickerYear, setPickerYear]   = useState(today.getFullYear());
+
+  // ── Interview booking ──────────────────────────────────────────────────────
+  const invitationId = searchParams.get("invitationId");
+  const [showBooking, setShowBooking] = useState(!!invitationId);
 
   // ── Events from hook ───────────────────────────────────────────────────────
   const { events, loading: loadingEvents, refetch } = useCalendarEvents({
@@ -320,6 +325,18 @@ export default function CalendarPage({ role }: Props) {
           <FutureProvidersCard />
         </div>
       </div>
+      
+      {/* Interview booking modal (candidate only) */}
+      {role === "candidate" && showBooking && invitationId && (
+        <BookInterviewModal
+          invitationId={invitationId}
+          onClose={() => setShowBooking(false)}
+          onConfirmed={() => {
+            setShowBooking(false);
+            void refetch();
+          }}
+        />
+      )}
     </div>
   );
 }

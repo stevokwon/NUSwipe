@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { ArrowLeft, Users, ExternalLink, RefreshCw, Save, GraduationCap, Microscope, BarChart3, Calendar, Mail, Phone, FileText, List, CreditCard, MessagesSquare } from "lucide-react";
 import { ApplicantSwipeStack } from "@/components/employer/ApplicantSwipeStack";
+import { ManageSlotsModal } from "@/components/employer/ManageSlotsModal";
+import { InviteInterviewModal } from "@/components/employer/InviteInterviewModal";
 
 interface ApplicationWithCandidate extends Application {
   jobs: Job;
@@ -79,6 +81,13 @@ export default function JobApplicantsPage() {
   const [applications, setApplications] = useState<ApplicationWithCandidate[]>([]);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("All");
   const [swipeMode, setSwipeMode] = useState<null | "applied" | "interviewing">(null);
+  const [manageSlotsOpen, setManageSlotsOpen] = useState(false);
+  const [inviteModal, setInviteModal] = useState<{
+    candidateId: string;
+    candidateName: string;
+    candidateEmail: string;
+    applicationId: string;
+  } | null>(null);
 
   // Load page data
   async function loadData(silent = false) {
@@ -469,6 +478,20 @@ export default function JobApplicantsPage() {
                             <ExternalLink className="h-3.5 w-3.5" /> LinkedIn <ExternalLink className="h-3 w-3" />
                           </a>
                         )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setInviteModal({
+                            candidateId: candidate.id,
+                            candidateName: candidateName,
+                            candidateEmail: candidate.email || "",
+                            applicationId: app.id,
+                          })}
+                          className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 bg-indigo-950/30 px-2.5 py-1 rounded-lg border border-indigo-900/40 h-auto"
+                        >
+                          <Mail className="h-3.5 w-3.5" />
+                          Invite to Interview
+                        </Button>
                       </div>
                     </div>
 
@@ -506,6 +529,22 @@ export default function JobApplicantsPage() {
           </div>
         )}
       </main>
+      <ManageSlotsModal
+        open={manageSlotsOpen}
+        onClose={() => setManageSlotsOpen(false)}
+      />
+
+      {inviteModal && (
+        <InviteInterviewModal
+          open={!!inviteModal}
+          onClose={() => setInviteModal(null)}
+          candidateId={inviteModal.candidateId}
+          candidateName={inviteModal.candidateName}
+          candidateEmail={inviteModal.candidateEmail}
+          applicationId={inviteModal.applicationId}
+          employerCompany={job.company}
+        />
+      )}
     </div>
   );
 }

@@ -12,7 +12,7 @@ export async function GET() {
   const { data: conn } = await supabase
     .from("calendar_connections")
     .select("provider, updated_at")
-    .eq("employer_id", user.id)
+    .eq("user_id", user.id)
     .eq("provider", "microsoft")
     .maybeSingle();
 

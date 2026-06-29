@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const { data: connection, error: connectionError } = await service
     .from("calendar_connections")
     .select("*")
-    .eq("employer_id", user.id)
+    .eq("user_id", user.id)
     .eq("provider", "google")
     .maybeSingle();
 
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
       access_token: accessToken,
       expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
       updated_at: new Date().toISOString(),
-    }).eq("employer_id", user.id).eq("provider", "google");
+    }).eq("user_id", user.id).eq("provider", "google");
   }
 
   const { searchParams } = new URL(req.url);
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
   const { data: connection, error: connectionError } = await service
     .from("calendar_connections")
     .select("*")
-    .eq("employer_id", user.id)
+    .eq("user_id", user.id)
     .eq("provider", "google")
     .maybeSingle();
 
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
         expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("employer_id", user.id)
+      .eq("user_id", user.id)
       .eq("provider", "google");
 
     if (refreshUpdateError) {
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
       last_synced_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq("employer_id", user.id)
+    .eq("user_id", user.id)
     .eq("provider", "google");
 
   if (syncUpdateError) {
@@ -200,7 +200,7 @@ export async function PATCH(req: NextRequest) {
   const { data: connection, error: connectionError } = await service
     .from("calendar_connections")
     .select("*")
-    .eq("employer_id", user.id)
+    .eq("user_id", user.id)
     .eq("provider", "google")
     .maybeSingle();
 
@@ -221,7 +221,7 @@ export async function PATCH(req: NextRequest) {
       access_token: accessToken,
       expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
       updated_at: new Date().toISOString(),
-    }).eq("employer_id", user.id).eq("provider", "google");
+    }).eq("user_id", user.id).eq("provider", "google");
   }
 
   // Build partial update — only include fields that were provided
@@ -252,7 +252,7 @@ export async function PATCH(req: NextRequest) {
   await service.from("calendar_connections").update({
     last_synced_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  }).eq("employer_id", user.id).eq("provider", "google");
+  }).eq("user_id", user.id).eq("provider", "google");
 
   return NextResponse.json({
     id: event.id,
@@ -281,7 +281,7 @@ export async function DELETE(req: NextRequest) {
   const { data: connection, error: connectionError } = await service
     .from("calendar_connections")
     .select("*")
-    .eq("employer_id", user.id)
+    .eq("user_id", user.id)
     .eq("provider", "google")
     .maybeSingle();
 
@@ -302,7 +302,7 @@ export async function DELETE(req: NextRequest) {
       access_token: accessToken,
       expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
       updated_at: new Date().toISOString(),
-    }).eq("employer_id", user.id).eq("provider", "google");
+    }).eq("user_id", user.id).eq("provider", "google");
   }
 
   const calendarId = encodeURIComponent(connection.calendar_id ?? "primary");
@@ -322,7 +322,7 @@ export async function DELETE(req: NextRequest) {
   await service.from("calendar_connections").update({
     last_synced_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  }).eq("employer_id", user.id).eq("provider", "google");
+  }).eq("user_id", user.id).eq("provider", "google");
 
   return new NextResponse(null, { status: 204 });
 }

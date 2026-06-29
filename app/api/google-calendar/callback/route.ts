@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       .from("calendar_connections")
       .upsert(
         {
-          employer_id: session.user.id,
+          user_id: session.user.id,
           access_token: providerToken,
           refresh_token: providerRefreshToken ?? null,
           provider_account_email: session.user.email ?? null,
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
           updated_at: new Date().toISOString(),
         } as any,
         {
-          onConflict: "employer_id",
+          onConflict: "user_id",
         }
       );
 

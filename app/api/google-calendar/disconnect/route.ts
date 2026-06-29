@@ -21,7 +21,7 @@ export async function DELETE() {
   const { error } = await service
     .from("calendar_connections")
     .delete()
-    .eq("employer_id", user.id)
+    .eq("user_id", user.id)
     .eq("provider", "google");
 
   if (error) {

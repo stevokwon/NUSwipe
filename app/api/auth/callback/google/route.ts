@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     const existing = await service
       .from("calendar_connections")
       .select("refresh_token, connected_at")
-      .eq("employer_id", user.id)
+      .eq("user_id", user.id)
       .eq("provider", "google")
       .maybeSingle();
 
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     const { error: upsertError } = await service.from("calendar_connections").upsert(
       {
-        employer_id: user.id,
+        user_id: user.id,
         provider: "google",
         provider_account_email: userInfo.email ?? null,
         access_token: tokens.access_token,
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
         updated_at: new Date().toISOString(),
         last_synced_at: null,
       },
-      { onConflict: "employer_id,provider" }
+      { onConflict: "user_id,provider" }
     );
 
     if (upsertError) {

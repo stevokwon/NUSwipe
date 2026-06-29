@@ -101,7 +101,6 @@ export type Database = {
           access_token: string
           calendar_id: string | null
           created_at: string
-          employer_id: string
           expires_at: string | null
           id: string
           last_synced_at: string | null
@@ -109,12 +108,12 @@ export type Database = {
           provider_account_email: string
           refresh_token: string | null
           updated_at: string
+          user_id: string
         }
         Insert: {
           access_token: string
           calendar_id?: string | null
           created_at?: string
-          employer_id: string
           expires_at?: string | null
           id?: string
           last_synced_at?: string | null
@@ -122,12 +121,12 @@ export type Database = {
           provider_account_email?: string
           refresh_token?: string | null
           updated_at?: string
+          user_id: string
         }
         Update: {
           access_token?: string
           calendar_id?: string | null
           created_at?: string
-          employer_id?: string
           expires_at?: string | null
           id?: string
           last_synced_at?: string | null
@@ -135,11 +134,12 @@ export type Database = {
           provider_account_email?: string
           refresh_token?: string | null
           updated_at?: string
+          user_id?: string
         }
         Relationships: [
           {
             foreignKeyName: "calendar_connections_employer_id_fkey"
-            columns: ["employer_id"]
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "employers"
             referencedColumns: ["id"]
@@ -307,6 +307,100 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      interview_invitations: {
+        Row: {
+          application_id: string
+          candidate_id: string
+          created_at: string | null
+          employer_id: string
+          id: string
+          slot_id: string | null
+          status: string | null
+        }
+        Insert: {
+          application_id: string
+          candidate_id: string
+          created_at?: string | null
+          employer_id: string
+          id?: string
+          slot_id?: string | null
+          status?: string | null
+        }
+        Update: {
+          application_id?: string
+          candidate_id?: string
+          created_at?: string | null
+          employer_id?: string
+          id?: string
+          slot_id?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_invitations_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_invitations_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_invitations_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_invitations_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "interview_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_slots: {
+        Row: {
+          created_at: string | null
+          employer_id: string
+          end_time: string
+          id: string
+          is_booked: boolean | null
+          start_time: string
+        }
+        Insert: {
+          created_at?: string | null
+          employer_id: string
+          end_time: string
+          id?: string
+          is_booked?: boolean | null
+          start_time: string
+        }
+        Update: {
+          created_at?: string | null
+          employer_id?: string
+          end_time?: string
+          id?: string
+          is_booked?: boolean | null
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_slots_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       jobs: {
         Row: {

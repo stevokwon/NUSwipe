@@ -28,7 +28,7 @@ export interface Database {
       calendar_connections: {
         Row: CalendarConnection;
         Insert: Omit<CalendarConnection, "id" | "connected_at" | "updated_at"> & { id?: string };
-        Update: Partial<Omit<CalendarConnection, "id" | "employer_id" | "connected_at">> & { updated_at?: string };
+        Update: Partial<Omit<CalendarConnection, "id" | "user_id" | "connected_at">> & { updated_at?: string };
         Relationships: [];
       };
       jobs: {
@@ -137,7 +137,7 @@ export type CalendarProvider = "google";
 
 export interface CalendarConnection {
   id: string;
-  employer_id: string;
+  user_id: string;
   provider: CalendarProvider;
   provider_account_email: string | null;
   access_token: string;

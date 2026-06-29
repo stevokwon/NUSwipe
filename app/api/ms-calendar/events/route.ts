@@ -42,14 +42,14 @@ async function getValidToken(userId: string): Promise<string | null> {
   const { data: conn, error } = await service
     .from("calendar_connections")
     .select("access_token, refresh_token, expires_at")
-    .eq("employer_id", userId)
+    .eq("user_id", userId)
     .eq("provider", "microsoft")
     .single();
 
   if (error || !conn) return null;
 
   // Still valid with a 60-second buffer
-  if (new Date(conn.expires_at) > new Date(Date.now() + 60_000)) {
+  if (conn.expires_at && new Date(conn.expires_at) > new Date(Date.now() + 60_000)) {
     return conn.access_token;
   }
 
@@ -66,7 +66,7 @@ async function getValidToken(userId: string): Promise<string | null> {
       expires_at: refreshed.expires_at,
       updated_at: new Date().toISOString(),
     })
-    .eq("employer_id", userId)
+    .eq("user_id", userId)
     .eq("provider", "microsoft");
 
   return refreshed.access_token;
