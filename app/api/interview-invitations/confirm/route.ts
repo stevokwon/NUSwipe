@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { invitation_id, slot_id } = await req.json();
+  
   if (!invitation_id || !slot_id) {
     return NextResponse.json({ error: "invitation_id and slot_id are required" }, { status: 400 });
   }
